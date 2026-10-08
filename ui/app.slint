@@ -1,0 +1,320 @@
+import { Theme, Art, Backdrop, Appearance } from "theme.slint";
+import { TrackData, ColumnData } from "types.slint";
+import { MenuBar } from "menubar.slint";
+import { SideTabs } from "sidetabs.slint";
+import { Splitter } from "splitter.slint";
+import { Toolbar } from "toolbar.slint";
+import { SeekRow } from "seekrow.slint";
+import { PlaylistTabs } from "playlist_tabs.slint";
+import { PlaylistTable } from "table.slint";
+import { DragGhost } from "drag_ghost.slint";
+import { MiniPlayer } from "mini_player.slint";
+import { Dialogs } from "dialogs_state.slint";
+import { Menus } from "menus_state.slint";
+import { Discover } from "discover_state.slint";
+import { DiscoverView } from "discover_view.slint";
+import { ArtistView } from "artist_view.slint";
+import { ArtistPage } from "artist_state.slint";
+import { ColorMath, HsvValue } from "color_math.slint";
+import { Overlays } from "overlays.slint";
+import { StatusBar } from "statusbar.slint";
+import { SidePanels } from "side_panels.slint";
+import { Panels } from "panels_state.slint";
+import { ContextMenuHost, ContextMenu } from "context_menu.slint";
+import { PlayerAdd } from "add_button.slint";
+export { PlayerAdd }
+export { DepsDialog } from "deps_dialog.slint";
+export { Icons } from "icon.slint";
+export { Theme, Art, Backdrop, Appearance, Dialogs, Menus, ArtistPage, Panels, ColorMath, HsvValue, Discover, TrackData }
+export { AddPlaylist, PlaylistChoice } from "add_playlist.slint";
+export component AppWindow inherits Window {
+    title: "Cloudberry";
+    icon: @image-url("../assets/icons/app/png/cloudberry-256.png");
+    default-font-family: Theme.font-family;
+    default-font-size: 12px * Theme.font-scale;
+    preferred-width: 1200px; preferred-height: 760px;
+    min-width: root.mini ? 360px * Theme.font-scale : 860px; min-height: root.mini ? 110px * Theme.font-scale : 540px;
+    background: Theme.window;
+
+    // ---- state pushed from Rust
+    in property <string> view: "main";
+    in-out property <bool> mini: false;
+    in property <image> cover;
+    in property <image> cover-flat;
+    in property <bool> has-cover;
+    in property <bool> playing;
+    in property <string> track-title: "Nothing playing";
+    in property <string> artist-name;
+    in property <string> album-name;
+    in property <string> elapsed: "0:00";
+    in property <string> total: "0:00";
+    in property <bool> liked;
+    in property <string> repeat-mode: "off";
+    in property <bool> shuffle;
+    in property <float> buffered;
+    in-out property <float> position;
+    in-out property <float> volume: 0.7;
+    in-out property <bool> seeking;
+    in property <[TrackData]> table-rows;
+    in property <[ColumnData]> columns;
+    in property <[ColumnData]> all-columns;
+    in property <[string]> playlist-tabs: ["Queue"];
+    in property <image> analyzer-frame;
+    in-out property <string> analyzer-style: "block";
+    in-out property <int> analyzer-fps: 30;
+    in property <string> status-summary;
+    in property <string> status-format;
+    in property <string> status-account;
+    in property <string> status-message;
+    in property <bool> has-track;
+    // ---- layout state
+    in-out property <int> sidebar-tab: 0; // 0 Now · 1 Library · 2 Search · 3 Lists
+    in-out property <length> sidebar-w: 300px * (1 + (Theme.font-scale - 1) * 0.5);
+    in-out property <bool> sidebar-visible: true;
+    in-out property <int> playlist-tab: 0;
+    out property <bool> system-dark: Theme.system-dark;
+
+    callback toggle-play();
+    callback next();
+    callback prev();
+    callback stop();
+    callback seek(float);
+    callback seek-by(float);
+    callback set-volume(float);
+    callback toggle-shuffle();
+    callback cycle-repeat();
+    callback toggle-like();
+    callback open-artist();
+    callback open-album();
+    callback more-like-this();
+    callback add-to-playlist(string);
+    /// Open the player bar's "Add to playlist" popup (Ctrl+P, Music menu).
+    public function open-add-popup() {
+        if (root.has-track) { ContextMenu.show("player-add", 0, Menus.player-add, PlayerAdd.x, PlayerAdd.y); }
+    }
+    callback now-context(string);
+    callback table-panel-dropped(string, int);
+    property <bool> drag-active: false; property <string> drag-text;
+    property <length> drag-x: 0px; property <length> drag-y: 0px;
+    public function table-ensure-visible(i: int) { table.ensure-visible(i); }
+    function drag-moved(data: string, title: string, x: length, y: length) {
+        root.drag-active = true; root.drag-text = title; root.drag-x = x; root.drag-y = y;
+        table.panel-drop-at = !Discover.active && !ArtistPage.active && x > table.absolute-position.x && y > table.absolute-position.y ? table.drop-index(y) : -1;
+    }
+    function drag-ended(data: string, x: length, y: length) {
+        root.drag-active = false;
+        if (table.panel-drop-at >= 0) { root.table-panel-dropped(data, table.panel-drop-at); }
+        table.panel-drop-at = -1;
+    }
+    callback table-row-clicked(int, bool, bool);
+    callback table-row-plain-click(int);
+    callback table-row-activated(int);
+    callback table-rows-dropped(int);
+    callback table-header-clicked(string);
+    callback table-column-resized(string, length);
+    callback table-column-resize-start();
+    callback table-column-resize-done();
+    callback table-column-dropped(int, length);
+    callback table-column-toggled(string);
+    callback table-width(length);
+    callback table-fixed-metrics(length, length, length, length);
+    callback table-delete();
+    callback table-select-all();
+    callback table-activate-selected();
+    callback table-nav(int);
+    callback table-shift(int);
+    callback tab-selected(int);
+    callback tab-close(int);
+    callback tab-add();
+    callback tab-rename(int);
+    callback tab-move(int, int);
+    /// kind = "queue" | "results" | "library"
+    callback context-action(string, string, int);
+    callback sidebar-changed(int);
+    callback menu-action(string);
+    callback analyzer-menu(string);
+    callback analyzer-resized(int, int);
+    callback system-theme-changed(bool);
+
+    changed system-dark => { root.system-theme-changed(root.system-dark); }
+
+    function select-sidebar(i: int) {
+        root.sidebar-visible = true;
+        root.sidebar-tab = i;
+        Panels.panel-selected = -1;
+        root.sidebar-changed(i);
+        if (i == 2) { side.focus-search(); } else { keys.focus(); }
+    }
+
+    keys := FocusScope {
+        key-pressed(e) => {
+            // the mini player has no table or search box: keep those keys away from the hidden UI
+            if (root.mini && ((e.modifiers.control && (e.text == "f" || e.text == "F" || e.text == "," || e.text == "t" || e.text == "w" || e.text == "a"))
+                || e.modifiers.alt || e.text == Key.Delete || e.text == Key.Backspace || e.text == Key.Return
+                || e.text == Key.UpArrow || e.text == Key.DownArrow)) { return reject; }
+            if (e.modifiers.control) {
+                if (e.text == Key.RightArrow) { root.next(); return accept; }
+                if (e.text == Key.LeftArrow) { root.prev(); return accept; }
+                if (e.text == Key.UpArrow) { root.volume = Math.min(1, root.volume + 0.05); root.set-volume(root.volume); return accept; }
+                if (e.text == Key.DownArrow) { root.volume = Math.max(0, root.volume - 0.05); root.set-volume(root.volume); return accept; }
+                if (e.text == "f" || e.text == "F") { root.select-sidebar(2); return accept; }
+                if (e.text == ",") { Dialogs.settings-visible = !Dialogs.settings-visible; if (Dialogs.settings-visible) { Dialogs.settings-opened(); } return accept; }
+                if (e.text == "l") { root.toggle-like(); return accept; }
+                if (e.text == "p") { root.open-add-popup(); return accept; }
+                if (e.text == "m") { root.menu-action("mini"); return accept; }
+                if (e.text == "t") { root.menu-action("tab-new"); return accept; }
+                if (e.text == "w") { root.menu-action("tab-close"); return accept; }
+                if (e.text == "q") { root.menu-action("quit"); return accept; }
+                if (e.text == "a") { root.table-select-all(); return accept; }
+                return reject;
+            }
+            if (e.modifiers.alt) {
+                if (e.text == "1") { root.select-sidebar(0); return accept; }
+                if (e.text == "2") { root.select-sidebar(1); return accept; }
+                if (e.text == "3") { root.select-sidebar(2); return accept; }
+                if (e.text == "4") { root.select-sidebar(3); return accept; }
+                if (e.text == "5") { root.select-sidebar(4); return accept; }
+                if (e.text == Key.UpArrow) { root.table-shift(-1); return accept; }
+                if (e.text == Key.DownArrow) { root.table-shift(1); return accept; }
+                return reject;
+            }
+            if (e.text == " ") { root.toggle-play(); return accept; }
+            if (e.text == Key.RightArrow) { root.seek-by(5); return accept; }
+            if (e.text == Key.LeftArrow) { root.seek-by(-5); return accept; }
+            if (e.text == Key.Return) { root.table-activate-selected(); return accept; }
+            if (e.text == Key.UpArrow) { root.table-nav(-1); return accept; }
+            if (e.text == Key.DownArrow) { root.table-nav(1); return accept; }
+            if (e.text == Key.Delete || e.text == Key.Backspace) { root.table-delete(); return accept; }
+            return reject;
+        }
+
+        VerticalLayout {
+            visible: !root.mini;
+            MenuBar { action(id) => { root.menu-action(id); } }
+            HorizontalLayout {
+                // ---- left pane: tab strip, panel, now-playing widget
+                Rectangle {
+                    width: root.sidebar-visible ? root.sidebar-w : 0px;
+                    clip: true;
+                    background: Theme.window;
+                    // positioned by hand (no layout) so panel sizes cannot loop back into the pane width
+                    SideTabs {
+                        x: 0px; y: 0px; height: parent.height;
+                        current <=> root.sidebar-tab;
+                        selected(i) => { root.select-sidebar(i); }
+                    }
+                    side := SidePanels {
+                        x: Theme.side-tab-w; y: 0px; width: parent.width - Theme.side-tab-w; height: parent.height;
+                        tab: root.sidebar-tab; avail-w: root.sidebar-w - Theme.side-tab-w;
+                        art: root.cover; art-flat: root.cover-flat; has-cover: root.has-cover; playing: root.playing;
+                        title: root.track-title; artist: root.artist-name; album: root.album-name;
+                        drag-moved(d, ti, x, y) => { root.drag-moved(d, ti, x, y); }
+                        drag-ended(d, x, y) => { root.drag-ended(d, x, y); }
+                        context(k, a, i) => { root.context-action(k, a, i); }
+                        open-artist => { root.open-artist(); }
+                        open-album => { root.open-album(); }
+                        more-like-this => { root.more-like-this(); }
+                        now-context(a) => { root.now-context(a); }
+                        has-track: root.has-track;
+                        now-clicked => { root.select-sidebar(0); }
+                        escaped => { keys.focus(); }
+                    }
+                }
+                Splitter {
+                    visible: root.sidebar-visible;
+                    pos <=> root.sidebar-w;
+                    min-pos: 260px; max-pos: 560px;
+                }
+                // ---- right pane: toolbar, seek row, playlist tabs, table
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    if !root.mini: Toolbar {
+                        playing: root.playing;
+                        analyzer-frame: root.analyzer-frame; analyzer-style: root.analyzer-style; analyzer-fps: root.analyzer-fps;
+                        volume <=> root.volume;
+                        shuffle: root.shuffle; repeat-mode: root.repeat-mode;
+                        toggle-play => { root.toggle-play(); }
+                        prev => { root.prev(); }
+                        next => { root.next(); }
+                        stop => { root.stop(); }
+                        set-volume(v) => { root.set-volume(v); }
+                        toggle-shuffle => { root.toggle-shuffle(); }
+                        cycle-repeat => { root.cycle-repeat(); }
+                        has-track: root.has-track;
+                        add-to-playlist(id) => { root.add-to-playlist(id); }
+                        analyzer-menu(m) => { root.analyzer-menu(m); }
+                        analyzer-resized(w, h) => { root.analyzer-resized(w, h); }
+                    }
+                    SeekRow {
+                        elapsed: root.elapsed; total: root.total;
+                        position <=> root.position; seeking <=> root.seeking;
+                        buffered: root.buffered; enabled: root.has-track;
+                        seek(v) => { root.seek(v); }
+                    }
+                    VerticalLayout { // same outer margin on the right and bottom as the gap on the left
+                        vertical-stretch: 1; padding-right: Theme.gap; padding-bottom: Theme.gap;
+                        PlaylistTabs {
+                            strip-w: root.width - (root.sidebar-visible ? root.sidebar-w : 0px) - 2 * Theme.gap;
+                            tabs: root.playlist-tabs;
+                            current <=> root.playlist-tab;
+                            selected(i) => { Discover.active = false; root.tab-selected(i); }
+                            discover-shown: Discover.opened; discover-active: Discover.active;
+                            discover-selected => { Discover.active = true; }
+                            close(i) => { root.tab-close(i); }
+                            add => { root.tab-add(); }
+                            rename(i) => { root.tab-rename(i); }
+                            move(i, d) => { root.tab-move(i, d); }
+                        }
+                        Rectangle { // the table, or the Discover page over it
+                            vertical-stretch: 1;
+                            table := PlaylistTable {
+                                width: parent.width; height: parent.height;
+                                visible: !Discover.active && !ArtistPage.active;
+                                rows: root.table-rows; columns: root.columns; all-columns: root.all-columns;
+                                row-clicked(i, ctrl, shift) => { keys.focus(); root.table-row-clicked(i, ctrl, shift); }
+                                row-plain-click(i) => { root.table-row-plain-click(i); }
+                                row-activated(i) => { root.table-row-activated(i); }
+                                rows-dropped(p) => { root.table-rows-dropped(p); }
+                                header-clicked(id) => { root.table-header-clicked(id); }
+                                column-resized(id, w) => { root.table-column-resized(id, w); }
+                                column-resize-start => { root.table-column-resize-start(); }
+                                column-resize-done => { root.table-column-resize-done(); }
+                                column-dropped(i, x) => { root.table-column-dropped(i, x); }
+                                column-toggled(id) => { root.table-column-toggled(id); }
+                                width-changed(w) => { root.table-width(w); }
+                                fixed-metrics(a, b, c, d) => { root.table-fixed-metrics(a, b, c, d); }
+                                context(a, i) => { root.context-action("queue", a, i); }
+                            }
+                            if Discover.active: DiscoverView { width: parent.width; height: parent.height; }
+                            if ArtistPage.active && !Discover.active: ArtistView { width: parent.width; height: parent.height; }
+                        }
+                    }
+                }
+            }
+            StatusBar {
+                summary: root.status-summary; format: root.status-format;
+                account: root.status-account; message: root.status-message;
+            }
+        }
+
+        if root.mini: MiniPlayer {
+            width: parent.width; height: parent.height;
+            art-flat: root.cover-flat; has-cover: root.has-cover; playing: root.playing;
+            title: root.track-title; artist: root.artist-name; album: root.album-name;
+            elapsed: root.elapsed; total: root.total; buffered: root.buffered;
+            position <=> root.position; seeking <=> root.seeking;
+            analyzer-frame: root.analyzer-frame; analyzer-style: root.analyzer-style; analyzer-fps: root.analyzer-fps;
+            toggle-play => { root.toggle-play(); }
+            restore => { root.menu-action("mini"); }
+            has-track: root.has-track;
+            add-to-playlist(id) => { root.add-to-playlist(id); }
+            prev => { root.prev(); }
+            next => { root.next(); }
+            seek(v) => { root.seek(v); }
+            analyzer-resized(w, h) => { root.analyzer-resized(w, h); }
+        }
+        if root.drag-active: DragGhost { x: root.drag-x + 12px; y: root.drag-y + 8px; text: root.drag-text; }
+        ContextMenuHost { x: 0px; y: 0px; }
+        Overlays { width: parent.width; height: parent.height; analyzer-style: root.analyzer-style; account: root.status-account; focus-main => { keys.focus(); } }
+    }
+}

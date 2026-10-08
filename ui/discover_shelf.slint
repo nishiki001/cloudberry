@@ -1,0 +1,79 @@
+import { Theme, Backdrop } from "theme.slint";
+import { ShelfData } from "types.slint";
+import { Icon } from "icon.slint";
+import { DiscoverCard } from "discover_card.slint";
+import { DiscoverSong } from "discover_song.slint";
+import { ContextMenu } from "context_menu.slint";
+
+// A shelf: heading and a row of cards (or a compact song list, 4 rows per column) that scrolls
+// sideways, with arrow buttons at the edges. Only the cards near the visible part exist, so
+// covers are requested only for what can be seen.
+export component DiscoverShelf inherits Rectangle {
+    in property <ShelfData> shelf;
+    /// The shelf is inside the page's visible area (cards are created only then).
+    in property <bool> on-screen: true;
+    callback clicked(int);
+    callback play(int);
+    callback context(string, int);
+    /// Identifies this shelf's menu requests in the window-level context menu host.
+    in property <string> owner;
+    property <int> picked: ContextMenu.picked-serial;
+    changed picked => {
+        if (root.owner != "" && ContextMenu.picked-owner == root.owner) { root.context(ContextMenu.picked-id, ContextMenu.picked-index); }
+    }
+    callback shown(int);
+    property <length> pitch: root.shelf.songs ? 312px : 152px;
+    property <int> per-col: root.shelf.songs ? 4 : 1;
+    property <int> cols: Math.ceil(root.shelf.items.length / root.per-col);
+    property <length> content-w: root.cols * root.pitch;
+    property <length> max-x: Math.max(0px, root.content-w - flick.width + 24px);
+    // index range of the columns that are created: the visible ones plus one page each side
+    property <int> first-col: Math.max(0, Math.floor((-flick.content-x - flick.width) / root.pitch));
+    property <int> last-col: Math.ceil((-flick.content-x + 2 * flick.width) / root.pitch);
+    height: root.shelf.songs ? 226px : 240px;
+    Text { x: 12px; y: 4px; width: parent.width - 24px; height: 26px; text: root.shelf.title; color: Theme.text; font-size: 17px * Theme.font-scale; font-weight: 700; overflow: elide; vertical-alignment: center; }
+    flick := Flickable {
+        x: 0px; y: 34px; width: parent.width; height: parent.height - 34px;
+        content-width: root.content-w + 24px;
+        content-height: self.height;
+        interactive: true;
+        animate content-x { duration: Theme.reduce-motion ? 0ms : 260ms; easing: ease-out; }
+        if root.on-screen: Rectangle {
+            for it[i] in root.shelf.items: Rectangle {
+                property <int> cidx: Math.floor(i / root.per-col);
+                x: 12px + cidx * root.pitch;
+                y: root.shelf.songs ? Math.mod(i, 4) * 46px : 0px;
+                width: root.shelf.songs ? 300px : 140px;
+                height: root.shelf.songs ? 44px : 200px;
+                if cidx >= root.first-col && cidx <= root.last-col && !root.shelf.songs: DiscoverCard {
+                    card: it;
+                    clicked => { root.clicked(i); }
+                    play => { root.play(i); }
+                    menu-owner: root.owner; menu-index: i;
+                    shown => { root.shown(i); }
+                }
+                if cidx >= root.first-col && cidx <= root.last-col && root.shelf.songs: DiscoverSong {
+                    card: it;
+                    clicked => { root.play(i); }
+                    menu-owner: root.owner; menu-index: i;
+                    shown => { root.shown(i); }
+                }
+            }
+        }
+    }
+    // arrow buttons at the shelf edges
+    if flick.content-x < -4px: Rectangle {
+        x: 6px; y: 34px + (root.shelf.songs ? 80px : 54px); width: 32px; height: 32px; border-radius: 16px;
+        background: Theme.base.with-alpha(0.92); border-width: 1px; border-color: Theme.border;
+        drop-shadow-color: Theme.shadow; drop-shadow-blur: 5px;
+        Icon { name: "back"; size: 18px; x: 7px; y: 7px; }
+        TouchArea { mouse-cursor: pointer; clicked => { flick.content-x = Math.min(0px, flick.content-x + flick.width * 0.8); } }
+    }
+    if flick.content-x > -root.max-x + 4px && root.max-x > 0px: Rectangle {
+        x: parent.width - 38px; y: 34px + (root.shelf.songs ? 80px : 54px); width: 32px; height: 32px; border-radius: 16px;
+        background: Theme.base.with-alpha(0.92); border-width: 1px; border-color: Theme.border;
+        drop-shadow-color: Theme.shadow; drop-shadow-blur: 5px;
+        Icon { name: "forward"; size: 18px; x: 7px; y: 7px; }
+        TouchArea { mouse-cursor: pointer; clicked => { flick.content-x = Math.max(-root.max-x, flick.content-x - flick.width * 0.8); } }
+    }
+}

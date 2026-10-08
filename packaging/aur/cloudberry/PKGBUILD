@@ -1,0 +1,39 @@
+# Maintainer: nishiki001 <nishiki001@users.noreply.github.com>
+pkgname=cloudberry
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Unofficial desktop client for YouTube Music (not affiliated with Google)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/nishiki001/cloudberry'
+license=('GPL-3.0-or-later')
+depends=('alsa-lib' 'fontconfig' 'libxkbcommon')
+makedepends=('cargo' 'cmake' 'pkgconf' 'wayland')
+optdepends=('wayland: Wayland support' 'libxkbcommon-x11: X11 support')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
+sha256sums=('SKIP') # scripts/aur-update.sh fills this in
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable CARGO_TARGET_DIR=target
+  # makepkg's -O2 CFLAGS break aws-lc-sys (jitterentropy needs -O0)
+  unset CFLAGS CXXFLAGS
+  cargo build --release --frozen
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  local id=io.github.nishiki001.Cloudberry
+  install -Dm755 target/release/cloudberry "$pkgdir/usr/bin/cloudberry"
+  install -Dm644 "packaging/$id.desktop" "$pkgdir/usr/share/applications/$id.desktop"
+  install -Dm644 "packaging/$id.metainfo.xml" "$pkgdir/usr/share/metainfo/$id.metainfo.xml"
+  for n in 16 22 24 32 48 64 128 256 512; do
+    install -Dm644 "assets/icons/app/png/cloudberry-$n.png" "$pkgdir/usr/share/icons/hicolor/${n}x${n}/apps/$id.png"
+  done
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

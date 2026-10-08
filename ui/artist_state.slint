@@ -1,0 +1,38 @@
+import { ShelfData, SongRow } from "types.slint";
+
+// State and callbacks of the artist page tab (`ui.global::<ArtistPage>()`).
+export global ArtistPage {
+    /// The current main tab is an artist page (shown instead of the table).
+    in-out property <bool> active: false;
+    in property <string> name;
+    in property <string> stats;
+    in property <string> description;
+    in-out property <bool> expanded: false;
+    in property <image> banner;
+    in property <bool> has-banner: false;
+    in property <image> avatar;
+    in property <bool> has-avatar: false;
+    in property <[SongRow]> songs;
+    in property <bool> has-all-songs: false;
+    in property <[ShelfData]> shelves;
+    /// The same page shows an album: square cover, album byline, no radio / related shelves.
+    in property <bool> album-mode: false;
+    in property <string> byline;
+    in property <string> songs-title: "Top songs";
+    callback byline-clicked();
+    in property <bool> busy;
+    in property <bool> can-back;
+    in property <bool> can-forward;
+    callback play();
+    callback shuffle();
+    callback radio();
+    callback back();
+    callback forward();
+    callback show-all-songs();
+    callback song-activated(int);
+    callback song-context(string, int);
+    callback card-clicked(int, int);
+    callback card-play(int, int);
+    callback card-context(string, int, int);
+    callback card-shown(int, int);
+}

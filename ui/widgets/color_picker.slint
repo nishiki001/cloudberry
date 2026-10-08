@@ -1,0 +1,126 @@
+import { Theme, Appearance } from "../theme.slint";
+import { ColorMath } from "../color_math.slint";
+import { Button } from "../button.slint";
+import { TextField } from "../textfield.slint";
+
+// Colour picker panel: saturation/value square, hue strip, hex input, recent colours and the
+// presets. `live` fires on every change (preview while dragging); `accepted` on OK;
+// `cancelled` on Cancel, after which the owner restores the value it had before.
+export component ColorPicker inherits Rectangle {
+    in-out property <float> h: 0;
+    in-out property <float> s: 1;
+    in-out property <float> v: 1;
+    in-out property <string> hex;
+    /// Shown when the picker opens (a popup is built anew on every `show()`).
+    in property <string> initial;
+    in property <color> initial-color;
+    callback live(string);
+    callback accepted(string);
+    callback cancelled();
+    property <length> sv-w: 220px;
+    property <length> sv-h: 140px;
+
+    init => { if (root.initial != "") { root.load(root.initial); } else { root.load-color(root.initial-color); } }
+    /// Load a colour ("#RRGGBB"); anything else is ignored.
+    public function load(c: string) {
+        if (ColorMath.hex-to-hsv(c).ok) {
+            root.h = ColorMath.hex-to-hsv(c).h; root.s = ColorMath.hex-to-hsv(c).s; root.v = ColorMath.hex-to-hsv(c).v;
+            root.hex = c;
+        }
+    }
+    /// Load a colour value (used when the field still follows the system colour).
+    public function load-color(c: color) {
+        root.h = c.to-hsv().hue; root.s = c.to-hsv().saturation; root.v = c.to-hsv().value;
+        root.hex = ColorMath.hsv-to-hex(root.h, root.s, root.v);
+    }
+    function changed-hsv() {
+        root.hex = ColorMath.hsv-to-hex(root.h, root.s, root.v);
+        root.live(root.hex);
+    }
+    function pick-hex(c: string) {
+        if (ColorMath.hex-to-hsv(c).ok) {
+            root.h = ColorMath.hex-to-hsv(c).h; root.s = ColorMath.hex-to-hsv(c).s; root.v = ColorMath.hex-to-hsv(c).v;
+            root.hex = ColorMath.hsv-to-hex(root.h, root.s, root.v);
+            root.live(root.hex);
+        }
+    }
+
+    width: 244px;
+    height: 306px;
+    background: Theme.base;
+    border-width: 1px;
+    border-color: Theme.border;
+    border-radius: Theme.radius-panel;
+    TouchArea { } // swallow clicks
+
+    VerticalLayout {
+        padding: 12px; spacing: 8px;
+        Rectangle { // saturation / value square
+            width: root.sv-w; height: root.sv-h;
+            background: hsv(root.h, 1, 1);
+            Rectangle { background: @linear-gradient(90deg, #ffffffff 0%, #ffffff00 100%); }
+            Rectangle { background: @linear-gradient(180deg, #00000000 0%, #000000ff 100%); }
+            Rectangle { border-width: 1px; border-color: Theme.border; }
+            Rectangle {
+                x: root.s * root.sv-w - 6px; y: (1 - root.v) * root.sv-h - 6px;
+                width: 12px; height: 12px; border-radius: 6px;
+                border-width: 2px; border-color: #ffffff;
+                background: transparent;
+                Rectangle { border-radius: 6px; border-width: 1px; border-color: #00000080; }
+            }
+            TouchArea {
+                moved => { if (self.pressed) { root.s = clamp(self.mouse-x / root.sv-w, 0, 1); root.v = 1 - clamp(self.mouse-y / root.sv-h, 0, 1); root.changed-hsv(); } }
+                pointer-event(e) => {
+                    if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) {
+                        root.s = clamp(self.mouse-x / root.sv-w, 0, 1); root.v = 1 - clamp(self.mouse-y / root.sv-h, 0, 1); root.changed-hsv();
+                    }
+                }
+            }
+        }
+        Rectangle { // hue strip
+            width: root.sv-w; height: 16px;
+            background: @linear-gradient(90deg, #ff0000 0%, #ffff00 16.66%, #00ff00 33.33%, #00ffff 50%, #0000ff 66.66%, #ff00ff 83.33%, #ff0000 100%);
+            border-radius: 2px;
+            Rectangle { border-width: 1px; border-color: Theme.border; border-radius: 2px; }
+            Rectangle {
+                x: root.h / 360 * root.sv-w - 3px; width: 6px; height: parent.height;
+                border-width: 2px; border-color: #ffffff; border-radius: 2px;
+                background: transparent;
+            }
+            TouchArea {
+                moved => { if (self.pressed) { root.h = clamp(self.mouse-x / root.sv-w, 0, 1) * 359.99; root.changed-hsv(); } }
+                pointer-event(e) => {
+                    if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) {
+                        root.h = clamp(self.mouse-x / root.sv-w, 0, 1) * 359.99; root.changed-hsv();
+                    }
+                }
+            }
+        }
+        HorizontalLayout {
+            spacing: 6px;
+            Rectangle { width: 24px; height: 24px; background: hsv(root.h, root.s, root.v); border-width: 1px; border-color: Theme.border; border-radius: 3px; }
+            TextField { text <=> root.hex; placeholder: "#RRGGBB"; edited(t) => { root.pick-hex(t); } }
+        }
+        HorizontalLayout {
+            spacing: 4px; height: 20px;
+            Text { text: "Recent"; color: Theme.text-dim; font-size: 11px * Theme.font-scale; width: 44px; vertical-alignment: center; }
+            for r in ColorMath.recent: Rectangle {
+                width: 20px; height: 20px; background: r.color; border-width: 1px; border-color: Theme.border; border-radius: 3px;
+                TouchArea { clicked => { root.pick-hex(r.hex); } mouse-cursor: pointer; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 4px; height: 20px;
+            Text { text: "Presets"; color: Theme.text-dim; font-size: 11px * Theme.font-scale; width: 44px; vertical-alignment: center; }
+            for p in Appearance.presets: Rectangle {
+                width: 20px; height: 20px; background: p.color; border-width: 1px; border-color: Theme.border; border-radius: 10px;
+                TouchArea { clicked => { root.pick-hex(p.hex); } mouse-cursor: pointer; }
+            }
+        }
+        HorizontalLayout {
+            spacing: 6px; alignment: end;
+            Button { label: "Cancel"; clicked => { root.cancelled(); } }
+            Button { label: "OK"; primary: true; clicked => { ColorMath.commit(root.hex); root.accepted(root.hex); } }
+        }
+    }
+}

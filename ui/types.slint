@@ -1,0 +1,95 @@
+export struct TrackData {
+    title: string,
+    artist: string,
+    album: string,
+    year: string,
+    time: string,
+    playing: bool,
+    liked: bool,
+    selected: bool,
+    /// song | video | album | artist | playlist
+    kind: string,
+    thumb: image,
+    has-thumb: bool,
+}
+
+export struct MenuEntry {
+    label: string,
+    shortcut: string,
+    id: string,
+}
+
+export struct ColumnData {
+    id: string,
+    title: string,
+    x: length,
+    w: length,
+    right: bool,
+    /// 0 = not sorted, 1 = ascending, 2 = descending
+    sort: int,
+    shown: bool,
+}
+
+/// One visible row of the Library tree (sections and their loaded children, flattened).
+export struct TreeRow {
+    label: string,
+    sub: string,
+    depth: int,
+    /// section | song | album | artist | playlist
+    kind: string,
+    expanded: bool,
+    loading: bool,
+    playing: bool,
+    thumb: image,
+    has-thumb: bool,
+}
+
+/// A card (or compact song row) of a Discover shelf.
+export struct CardData {
+    title: string,
+    subtitle: string,
+    /// song | video | album | artist | playlist
+    kind: string,
+    thumb: image,
+    has-thumb: bool,
+}
+
+export struct ShelfData {
+    title: string,
+    /// Compact track list (4 rows per column) instead of cards.
+    songs: bool,
+    items: [CardData],
+}
+
+export struct MoodChip {
+    title: string,
+    group: string,
+}
+
+export struct SubItem {
+    label: string,
+    id: string,
+    enabled: bool,
+}
+
+/// An entry of a themed menu. `separator` rows ignore the other fields; `sub` makes a submenu.
+export struct MenuItemData {
+    label: string,
+    shortcut: string,
+    id: string,
+    enabled: bool,
+    separator: bool,
+    sub: [SubItem],
+}
+
+/// A row of a compact song list (artist top songs, album tracks).
+export struct SongRow {
+    title: string,
+    artist: string,
+    album: string,
+    plays: string,
+    time: string,
+    playing: bool,
+    thumb: image,
+    has-thumb: bool,
+}

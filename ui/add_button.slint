@@ -1,0 +1,35 @@
+import { ToolButton } from "toolbtn.slint";
+import { ContextMenu } from "context_menu.slint";
+import { Menus } from "menus_state.slint";
+
+/// Where the player-bar popup opens when it is called from the keyboard / menu bar.
+export global PlayerAdd {
+    in-out property <length> x: 300px;
+    in-out property <length> y: 60px;
+}
+
+/// "Add current song to playlist": a tool button whose popup (New playlist… / Existing
+/// playlist…) lives in the window-level menu host. `chosen` carries the menu id ("pl:…").
+export component AddToPlaylistButton inherits Rectangle {
+    in property <bool> enabled: true;
+    in property <bool> pill: false;
+    in property <length> icon-size: 18px;
+    callback chosen(string);
+    property <int> picked: ContextMenu.picked-serial;
+    changed picked => { if (ContextMenu.picked-owner == "player-add") { root.chosen(ContextMenu.picked-id); } }
+    width: btn.width;
+    height: btn.height;
+    btn := ToolButton {
+        icon: "playlist-add";
+        tip: "Add to playlist";
+        hover-tip: true;
+        enabled: root.enabled;
+        pill: root.pill;
+        icon-size: root.icon-size;
+        clicked => {
+            PlayerAdd.x = root.absolute-position.x;
+            PlayerAdd.y = root.absolute-position.y + root.height;
+            ContextMenu.show("player-add", 0, Menus.player-add, PlayerAdd.x, PlayerAdd.y);
+        }
+    }
+}

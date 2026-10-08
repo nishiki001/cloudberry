@@ -1,0 +1,39 @@
+import { Theme } from "theme.slint";
+import { Icon } from "icon.slint";
+
+// Text field with a search icon and placeholder.
+export component SearchBox inherits Rectangle {
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder: "Search songs, artists, albums…";
+    callback accepted(string);
+    callback escaped();
+    public function focus-input() { input.focus(); }
+
+    height: 26px;
+    border-radius: Theme.radius;
+    border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    background: Theme.base;
+
+    Icon { name: "search"; size: 14px; tint: Theme.text-dim; x: 7px; y: (parent.height - self.height) / 2; }
+    input := TextInput {
+        x: 28px; width: parent.width - 36px;
+        vertical-alignment: center;
+        color: Theme.text;
+        single-line: true;
+        selection-background-color: Theme.selection;
+        selection-foreground-color: Theme.text;
+        accepted => { root.accepted(self.text); }
+        key-pressed(e) => {
+            if (e.text == Key.Escape) { root.escaped(); return accept; }
+            return reject;
+        }
+    }
+    if input.text == "" && !input.has-focus: Text {
+        x: 28px;
+        text: root.placeholder;
+        color: Theme.text-dim;
+        vertical-alignment: center;
+        height: parent.height;
+    }
+}

@@ -1,0 +1,96 @@
+import { Theme } from "theme.slint";
+import { Dialogs } from "dialogs_state.slint";
+import { Button } from "button.slint";
+import { Modal } from "modal.slint";
+import { Row, Choice, TabRow } from "form.slint";
+import { AppearancePage } from "appearance_page.slint";
+import { BackgroundPage } from "background_page.slint";
+import { FontsPage } from "fonts_page.slint";
+import { AnalyzerPage } from "analyzer_page.slint";
+
+// Ctrl+, : Playback, Appearance, Analyzer, Background, Fonts, Account, Cache.
+export component SettingsPanel inherits Modal {
+    in property <int> theme-mode; // 0 system 1 light 2 dark
+    in property <bool> reduce-motion;
+    in property <string> analyzer-style;
+    in property <bool> spinning-disc;
+    in property <string> disc-speed;
+    in property <int> quality; // 0 best, 1 data saver
+    in property <string> browser;
+    in property <string> cache-size;
+    in property <string> auth-status;
+    in property <string> account;
+    in property <string> backend;
+    in-out property <int> page: 0;
+    callback set-theme(int);
+    callback set-reduce-motion(bool);
+    callback set-quality(int);
+    callback signin(string);
+    callback clear-cache();
+    callback close();
+    heading: "Settings";
+    panel-width: 600px;
+
+    TabRow {
+        labels: ["Playback", "Appearance", "Analyzer", "Background", "Fonts", "Account", "Cache"];
+        widest: "Background";
+        current: root.page;
+        picked(i) => { root.page = i; }
+    }
+    if root.page == 0: VerticalLayout {
+        spacing: 10px;
+        Choice {
+            name: "Audio engine";
+            labels: Dialogs.mpv-available ? ["Native", "mpv"] : ["Native"];
+            ids: Dialogs.mpv-available ? ["native", "mpv"] : ["native"];
+            current: root.backend;
+            picked(id) => { Dialogs.set-backend(id); }
+        }
+        Text { text: "Native decodes with symphonia and feeds the analyzer; mpv is the fallback. Applies after a restart."; color: Theme.text-dim; font-size: 12px * Theme.font-scale; wrap: word-wrap; }
+        Choice {
+            name: "yt-dlp / deno";
+            labels: ["Managed", "System"];
+            ids: ["managed", "system"];
+            current: Dialogs.tools-source;
+            picked(id) => { if (!Dialogs.tools-locked) { Dialogs.set-tools-source(id); } }
+        }
+        Row {
+            name: "Helpers";
+            Text { text: Dialogs.tools-status; color: Theme.text; font-size: 12px * Theme.font-scale; vertical-alignment: center; wrap: word-wrap; }
+            Button { label: Dialogs.tools-busy ? "Updating…" : "Update now"; enabled: !Dialogs.tools-busy && Dialogs.tools-source == "managed" && !Dialogs.tools-locked; clicked => { Dialogs.update-tools(); } }
+        }
+        Text { text: "Managed copies are the official yt-dlp and deno binaries, downloaded to the app data folder and checked daily; \"System\" uses the ones on your PATH (needs a restart)."; color: Theme.text-dim; font-size: 12px * Theme.font-scale; wrap: word-wrap; }
+        Row {
+            name: "Quality";
+            for n[i] in ["Best", "Data saver"]: Button { label: n; active: root.quality == i; clicked => { root.set-quality(i); } }
+        }
+    }
+    if root.page == 1: AppearancePage {
+        theme-mode: root.theme-mode; reduce-motion: root.reduce-motion;
+        spinning-disc: root.spinning-disc; disc-speed: root.disc-speed;
+        set-theme(m) => { root.set-theme(m); }
+        set-reduce-motion(v) => { root.set-reduce-motion(v); }
+    }
+    if root.page == 2: AnalyzerPage { analyzer-style: root.analyzer-style; }
+    if root.page == 3: BackgroundPage { }
+    if root.page == 4: FontsPage { }
+    if root.page == 5: VerticalLayout {
+        spacing: 10px;
+        Choice {
+            name: "Browser";
+            labels: ["firefox", "chrome", "chromium", "brave", "edge", "vivaldi", "safari"];
+            ids: ["firefox", "chrome", "chromium", "brave", "edge", "vivaldi", "safari"];
+            current: root.browser;
+            picked(id) => { root.signin(id); }
+        }
+        Text { text: root.auth-status != "" ? root.auth-status : root.account; color: Theme.text; font-size: 12px * Theme.font-scale; wrap: word-wrap; }
+        Button { label: "Import cookies.txt…"; clicked => { Dialogs.import-cookies(); } }
+        Text { text: "Pick the browser you are signed in to; cookies are exported once through yt-dlp."; color: Theme.text-dim; font-size: 12px * Theme.font-scale; wrap: word-wrap; }
+    }
+    if root.page == 6: Row {
+        name: "Thumbnails";
+        Text { text: root.cache-size; color: Theme.text; font-size: 13px * Theme.font-scale; vertical-alignment: center; }
+        Button { label: "Clear"; clicked => { root.clear-cache(); } }
+    }
+    HorizontalLayout { alignment: end; Button { label: "Close"; primary: true; clicked => { root.close(); } } }
+}

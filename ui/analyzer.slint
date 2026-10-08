@@ -1,0 +1,49 @@
+import { ThemedMenu } from "themed_menu.slint";
+import { Theme } from "theme.slint";
+import { Glass } from "glass.slint";
+
+// Spectrum analyzer: pixels come from Rust (real audio samples). Right-click for the menu.
+export component Analyzer inherits Rectangle {
+    in property <image> frame;
+    in property <string> style: "block";
+    in property <int> fps: 30;
+    callback menu(string);
+    /// Pixel size of the drawing area; Rust re-renders at exactly this size.
+    callback resized(int, int);
+    changed width => { root.resized(Math.round((self.width - 2px) / 1px), Math.round((self.height - 2px) / 1px)); }
+    changed height => { root.resized(Math.round((self.width - 2px) / 1px), Math.round((self.height - 2px) / 1px)); }
+    visible: root.style != "off";
+    // `changed` does not fire for the first layout: report the initial size once, shortly after
+    Timer {
+        interval: 60ms;
+        running: true;
+        triggered => {
+            self.running = false;
+            root.resized(Math.round((root.width - 2px) / 1px), Math.round((root.height - 2px) / 1px));
+        }
+    }
+    min-width: 120px;
+    background: Theme.analyzer-bg;
+    border-width: 1px;
+    border-color: Theme.border;
+
+    Image {
+        source: root.frame;
+        width: parent.width - 2px; height: parent.height - 2px;
+        x: 1px; y: 1px;
+        image-fit: fill;
+    }
+    if Theme.gloss > 0: Glass { // glass frame over the drawing: rim, gloss and glow, drawing shows through
+        width: parent.width; height: parent.height; radius: 4px;
+        top: #FFFFFF.with-alpha(0.0); bottom: #FFFFFF.with-alpha(0.0);
+        gloss-scale: 0.45;
+    }
+    menu := ThemedMenu {
+        width: parent.width; height: parent.height;
+        entries: [{ label: "Block", id: "block", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Bars", id: "bars", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Wave", id: "wave", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Curve", id: "curve", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Mirror bars", id: "mirror", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Dots", id: "dots", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Off", id: "off", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Colors", id: "", shortcut: "", enabled: true, separator: false, sub: [{ label: "Follow accent", id: "scheme-accent", enabled: true }, { label: "Classic", id: "scheme-classic", enabled: true }, { label: "Ice", id: "scheme-ice", enabled: true }, { label: "Sunset", id: "scheme-sunset", enabled: true }, { label: "Mono", id: "scheme-mono", enabled: true }, { label: "Custom", id: "scheme-custom", enabled: true }] }, { label: "30 fps", id: "fps30", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "60 fps", id: "fps60", shortcut: "", enabled: true, separator: false, sub: [] }];
+        activated(id) => { root.menu(id); }
+    }
+    TouchArea { // right click opens the menu
+        pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up) { menu.open(self.mouse-x, self.mouse-y); } }
+    }
+}

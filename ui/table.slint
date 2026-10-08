@@ -1,0 +1,230 @@
+import { ScrollList } from "scroll_list.slint";
+import { Theme, Backdrop } from "theme.slint";
+import { Icon } from "icon.slint";
+import { ThemedMenu } from "themed_menu.slint";
+import { ContextMenu } from "context_menu.slint";
+import { Menus } from "menus_state.slint";
+import { TrackData, ColumnData } from "types.slint";
+
+// Playlist table. Columns arrive pre-laid-out from Rust (order, widths, visibility); rows are
+// virtualized by ScrollList. Header: click = sort, drag edge = resize, drag title = reorder,
+// right-click = show/hide columns. Rows: click / Ctrl / Shift select, drag to reorder.
+export component PlaylistTable inherits Rectangle {
+    in property <[TrackData]> rows;
+    in property <[ColumnData]> columns;
+    in property <[ColumnData]> all-columns; // every column with `shown` = visible (header menu)
+    callback row-clicked(int, bool, bool); // index, ctrl, shift
+    callback row-plain-click(int);
+    callback row-activated(int);
+    callback rows-dropped(int); // insertion position (before this row index; rows.length = end)
+    callback header-clicked(string);
+    /// Distance dragged (px) since the press, measured in window coordinates.
+    callback column-resized(string, length);
+    callback column-resize-start();
+    callback column-resize-done();
+    callback column-dropped(int, length); // dragged header index, absolute x where it was released
+    callback column-toggled(string);
+    callback context(string, int);
+    callback width-changed(length);
+    /// Widths the fixed columns need for the current font: #, Year, Length, ♥ (see `core::columns`).
+    callback fixed-metrics(length, length, length, length);
+    background: Theme.base;
+    border-width: 1px;
+    border-color: Theme.border;
+    clip: true;
+    changed width => { root.width-changed(root.width); Backdrop.resized(Math.round(root.width / 1px), Math.round(root.height / 1px)); }
+    changed height => { Backdrop.resized(Math.round(root.width / 1px), Math.round(root.height / 1px)); }
+    if Backdrop.active: Rectangle {
+        width: parent.width; height: parent.height;
+        Image {
+            source: Backdrop.a; width: parent.width; height: parent.height;
+            opacity: Backdrop.show-b ? 0.0 : Backdrop.opacity;
+            visible: self.opacity > 0.001; // the hidden layer is not painted at all
+            animate opacity { duration: Theme.reduce-motion ? 0ms : 450ms; }
+        }
+        Image {
+            source: Backdrop.b; width: parent.width; height: parent.height;
+            opacity: Backdrop.show-b ? Backdrop.opacity : 0.0;
+            visible: self.opacity > 0.001;
+            animate opacity { duration: Theme.reduce-motion ? 0ms : 450ms; }
+        }
+    }
+    // `changed` does not fire for the first layout: report the initial width once
+    Timer {
+        interval: 50ms;
+        running: true;
+        triggered => { self.running = false; root.report(); root.width-changed(root.width); Backdrop.resized(Math.round(root.width / 1px), Math.round(root.height / 1px)); }
+    }
+
+    // Hidden probes: the widest real content of each fixed column (and its bold header plus the
+    // sort arrow), in the current font and size. Rust sizes the columns from these.
+    property <length> w-num: Math.max(m-num.preferred-width + 14px, m-num-h.preferred-width + 24px);
+    property <length> w-year: Math.max(m-year.preferred-width + 14px, m-year-h.preferred-width + 24px);
+    property <length> w-len: Math.max(m-len.preferred-width + 14px, m-len-h.preferred-width + 24px);
+    property <length> w-like: 14px * Theme.font-scale + 14px;
+    function report() { root.fixed-metrics(root.w-num, root.w-year, root.w-len, root.w-like); }
+    changed w-num => { root.report(); }
+    changed w-year => { root.report(); }
+    changed w-len => { root.report(); }
+    changed w-like => { root.report(); }
+    m-num := Text { visible: false; text: root.rows.length < 100 ? "88" : root.rows.length < 1000 ? "888" : root.rows.length < 10000 ? "8888" : "88888"; }
+    m-num-h := Text { visible: false; text: "#"; font-weight: 700; }
+    m-year := Text { visible: false; text: "8888"; }
+    m-year-h := Text { visible: false; text: "Year"; font-weight: 700; }
+    m-len := Text { visible: false; text: "88:88:88"; }
+    m-len-h := Text { visible: false; text: "Length"; font-weight: 700; }
+
+    // the row menu lives in the window-level host (a popup owned by a row would be lost whenever
+    // the rows are rebuilt); its choice comes back here
+    property <int> picked: ContextMenu.picked-serial;
+    changed picked => {
+        if (ContextMenu.picked-owner == "table") { root.context(ContextMenu.picked-id, ContextMenu.picked-index); }
+    }
+
+    property <int> drag-from: -1;
+    property <bool> dragging: false;
+    property <int> drop-at: -1;
+    /// Insertion marker for a drag that comes from a sidebar list (set by the window).
+    in-out property <int> panel-drop-at: -1;
+
+    /// Scroll just enough to bring row `i` into view.
+    public function ensure-visible(i: int) {
+        if (i * Theme.row-h < -lv.content-y) { lv.content-y = -(i * Theme.row-h); }
+        if ((i + 1) * Theme.row-h > -lv.content-y + lv.height) { lv.content-y = -((i + 1) * Theme.row-h - lv.height); }
+    }
+
+    /// Insertion position for a window-absolute y (rows are virtualized, so this accounts for scrolling).
+    public function drop-index(abs-y: length) -> int {
+        return Math.max(0, Math.min(root.rows.length, Math.round((abs-y - root.absolute-position.y - 22px * Theme.font-scale - lv.content-y) / Theme.row-h)));
+    }
+
+    function cell(r: TrackData, id: string) -> string {
+        if (id == "title") { return r.title; }
+        if (id == "artist") { return r.artist; }
+        if (id == "album") { return r.album; }
+        if (id == "year") { return r.year; }
+        if (id == "length") { return r.time; }
+        return "";
+    }
+
+    VerticalLayout {
+        header := Rectangle { // ---- header
+            height: 22px * Theme.font-scale;
+            background: @linear-gradient(180deg, Theme.header-top 0%, Theme.header-bottom 100%);
+            Rectangle { x: 0px; y: parent.height - 1px; height: 1px; background: Theme.border; }
+            Rectangle { x: 0px; y: 1px; height: 1px; background: Theme.bevel; }
+            for col[ci] in root.columns: Rectangle {
+                x: col.x; width: col.w; height: parent.height;
+                property <length> press-x: 0px;
+                property <bool> drag: false;
+                background: hta.has-hover ? Theme.btn-hover-top.with-alpha(0.5) : transparent;
+                Text {
+                    x: 6px; width: parent.width - (col.sort > 0 ? 22px : 12px);
+                    text: col.title; color: Theme.text; font-weight: 700; overflow: elide;
+                    horizontal-alignment: col.right ? right : left; vertical-alignment: center; height: parent.height;
+                }
+                if col.sort > 0: Icon { name: col.sort == 1 ? "sort-up" : "sort-down"; size: 11px; tint: Theme.text-dim; x: parent.width - 16px; y: (parent.height - self.height) / 2; }
+                Rectangle { x: parent.width - 1px; width: 1px; background: Theme.border; opacity: 0.7; }
+                hta := TouchArea {
+                    pointer-event(e) => {
+                        if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up) { header-menu.open(self.absolute-position.x - header.absolute-position.x + self.mouse-x, self.mouse-y); }
+                        if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) { parent.press-x = self.mouse-x; parent.drag = false; }
+                        if (e.button == PointerEventButton.left && e.kind == PointerEventKind.up) {
+                            if (parent.drag) { root.column-dropped(ci, col.x + self.mouse-x); } else { root.header-clicked(col.id); }
+                            parent.drag = false;
+                        }
+                    }
+                    moved => {
+                        if (self.pressed && Math.abs(self.mouse-x - parent.press-x) > 8px) { parent.drag = true; }
+                    }
+                }
+                // resize handle on the right edge
+                Rectangle {
+                    x: parent.width - 5px; width: 8px; height: parent.height;
+                    // the handle moves while its column resizes, so the pointer is tracked in window
+                    // coordinates (handle-relative positions would feed back and make the width jitter)
+                    property <length> press-abs: 0px;
+                    ra := TouchArea {
+                        mouse-cursor: col-resize;
+                        pointer-event(e) => {
+                            if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) { parent.press-abs = self.absolute-position.x + self.mouse-x; root.column-resize-start(); }
+                            if (e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel) { root.column-resize-done(); }
+                        }
+                        moved => {
+                            if (self.pressed) { root.column-resized(col.id, (self.absolute-position.x + self.mouse-x) - parent.press-abs); }
+                        }
+                    }
+                }
+            }
+            header-menu := ThemedMenu {
+                width: parent.width; height: parent.height;
+                entries: Menus.column-menu;
+                activated(id) => { root.column-toggled(id); }
+            }
+        }
+        lv := ScrollList {
+            vertical-stretch: 1;
+            row-h: Theme.row-h; count: root.rows.length;
+            for k in lv.shown: Rectangle {
+                property <int> i: lv.first + k;
+                property <TrackData> r: root.rows[i];
+                visible: i < root.rows.length;
+                x: 0px; y: i * Theme.row-h; width: lv.width - 12px;
+                height: Theme.row-h;
+                background: r.selected ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%)
+                    : ta.has-hover ? Theme.base.mix(Theme.selection, 0.5)
+                    : Math.mod(i, 2) == 1 ? Theme.alt-row-t : Theme.base-t;
+                if r.playing: Icon { name: "play"; size: 12px; tint: Theme.accent-text; x: 9px; y: (parent.height - self.height) / 2; }
+                for col in root.columns: Rectangle {
+                    x: col.x; width: col.w; height: parent.height;
+                    if col.id == "num": Text { x: 6px; width: parent.width - 12px; overflow: elide; text: i + 1; color: Theme.text-dim; horizontal-alignment: right; vertical-alignment: center; height: parent.height; }
+                    if col.id == "like": Rectangle {
+                        if r.liked: Icon { name: "heart"; size: 13px; tint: Theme.accent; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                    }
+                    if col.id != "num" && col.id != "like": Text {
+                        x: 6px; width: parent.width - 12px;
+                        text: root.cell(r, col.id);
+                        color: col.id == "year" ? Theme.text-dim : Theme.text;
+                        font-weight: r.playing && col.id == "title" ? 700 : 400;
+                        horizontal-alignment: col.right ? right : left;
+                        overflow: elide; vertical-alignment: center; height: parent.height;
+                    }
+                }
+                ta := TouchArea {
+                    pointer-event(e) => {
+                        if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { Menus.prepare-row(i); }
+                        if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up) { ContextMenu.show("table", i, Menus.row-menu, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                        if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) {
+                            root.row-clicked(i, e.modifiers.control, e.modifiers.shift);
+                            root.drag-from = i;
+                            root.dragging = false;
+                        }
+                        if (e.button == PointerEventButton.left && e.kind == PointerEventKind.up) {
+                            if (root.dragging && root.drop-at >= 0) { root.rows-dropped(root.drop-at); }
+                            root.dragging = false;
+                            root.drop-at = -1;
+                            root.drag-from = -1;
+                        }
+                        if (e.kind == PointerEventKind.cancel) { root.dragging = false; root.drop-at = -1; }
+                    }
+                    moved => {
+                        if (self.pressed && root.drag-from == i) {
+                            if (Math.abs(self.mouse-y - self.pressed-y) > 6px) { root.dragging = true; }
+                            if (root.dragging) {
+                                root.drop-at = Math.max(0, Math.min(root.rows.length, Math.round((i * Theme.row-h + self.mouse-y) / Theme.row-h)));
+                            }
+                        }
+                    }
+                    clicked => { root.row-plain-click(i); }
+                    double-clicked => { root.row-activated(i); }
+                }
+            }
+        }
+    }
+    // insertion line while dragging rows
+    if (root.dragging && root.drop-at >= 0) || root.panel-drop-at >= 0: Rectangle {
+        x: 1px; width: parent.width - 2px; height: 2px;
+        y: 22px * Theme.font-scale + (root.panel-drop-at >= 0 ? root.panel-drop-at : root.drop-at) * Theme.row-h + lv.content-y;
+        background: Theme.accent;
+    }
+}

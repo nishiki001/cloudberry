@@ -1,0 +1,81 @@
+# Flatpak manifest. Local / release-bundle build (scripts/package.sh flatpak); Flathub gets the same
+# file with the `dir` source replaced by the tagged git source (scripts/flathub-manifest.sh).
+# yt-dlp and deno are bundled (pinned, checksummed) and the app is built with --features
+# system-tools, so it neither downloads nor updates executables at run time.
+app-id: io.github.nishiki001.Cloudberry
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: cloudberry
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  # MPRIS: org.mpris.MediaPlayer2.<app-id> is owned by default, so no --own-name
+build-options:
+  # the runtime default -O2 would override the -O0 aws-lc needs for jitterentropy
+  cflags: ""
+  cflags-override: true
+  cxxflags: ""
+  cxxflags-override: true
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/cloudberry/cargo
+modules:
+  - name: yt-dlp
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 yt-dlp /app/bin/yt-dlp
+    sources:
+      - type: file
+        only-arches: [x86_64]
+        url: https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_linux
+        sha256: 58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a
+        dest-filename: yt-dlp
+      - type: file
+        only-arches: [aarch64]
+        url: https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp_linux_aarch64
+        sha256: b16e4dab368a816cd05d477d698a605a6ae87ccee1c8ffd38fa21d7254141fcc
+        dest-filename: yt-dlp
+  - name: deno
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 deno /app/bin/deno
+    sources:
+      - type: archive
+        only-arches: [x86_64]
+        url: https://github.com/denoland/deno/releases/download/v2.9.7/deno-x86_64-unknown-linux-gnu.zip
+        sha256: c6527f24f4b16031d3ae4fa9f658d5f11534c8d84ce7dc8502420280919c3490
+        strip-components: 0
+      - type: archive
+        only-arches: [aarch64]
+        url: https://github.com/denoland/deno/releases/download/v2.9.7/deno-aarch64-unknown-linux-gnu.zip
+        sha256: c832298b1ad4422481334855f6003e0f54145762c5a134f20a489511d2f65bbf
+        strip-components: 0
+  - name: cloudberry
+    buildsystem: simple
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml --locked
+      - cargo --offline build --release --locked --features system-tools
+      - install -Dm755 target/release/cloudberry /app/bin/cloudberry
+      - install -Dm644 packaging/io.github.nishiki001.Cloudberry.desktop /app/share/applications/io.github.nishiki001.Cloudberry.desktop
+      - install -Dm644 packaging/io.github.nishiki001.Cloudberry.metainfo.xml /app/share/metainfo/io.github.nishiki001.Cloudberry.metainfo.xml
+      - install -Dm644 assets/icons/app/png/cloudberry-16.png /app/share/icons/hicolor/16x16/apps/io.github.nishiki001.Cloudberry.png
+      - install -Dm644 assets/icons/app/png/cloudberry-22.png /app/share/icons/hicolor/22x22/apps/io.github.nishiki001.Cloudberry.png
+      - install -Dm644 assets/icons/app/png/cloudberry-24.png /app/share/icons/hicolor/24x24/apps/io.github.nishiki001.Cloudberry.png
+      - install -Dm644 assets/icons/app/png/cloudberry-32.png /app/share/icons/hicolor/32x32/apps/io.github.nishiki001.Cloudberry.png
+      - install -Dm644 assets/icons/app/png/cloudberry-48.png /app/share/icons/hicolor/48x48/apps/io.github.nishiki001.Cloudberry.png
+      - install -Dm644 assets/icons/app/png/cloudberry-64.png /app/share/icons/hicolor/64x64/apps/io.github.nishiki001.Cloudberry.png
+      - install -Dm644 assets/icons/app/png/cloudberry-128.png /app/share/icons/hicolor/128x128/apps/io.github.nishiki001.Cloudberry.png
+      - install -Dm644 assets/icons/app/png/cloudberry-256.png /app/share/icons/hicolor/256x256/apps/io.github.nishiki001.Cloudberry.png
+      - install -Dm644 assets/icons/app/png/cloudberry-512.png /app/share/icons/hicolor/512x512/apps/io.github.nishiki001.Cloudberry.png
+    sources:
+      - type: dir
+        path: ../..
+        skip: [target, dist, .git, .flatpak-builder]
+      - cargo-sources.json

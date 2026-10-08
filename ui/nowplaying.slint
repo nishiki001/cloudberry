@@ -1,0 +1,42 @@
+import { Theme } from "theme.slint";
+import { Icon } from "icon.slint";
+import { Disc } from "disc.slint";
+
+// Bottom-left widget: cover + title/artist; click opens the Now tab.
+export component NowPlaying inherits Rectangle {
+    in property <image> art; // circle-masked (disc mode)
+    in property <image> art-flat; // square (default)
+    in property <bool> has-cover;
+    in property <bool> playing;
+    in property <string> title;
+    in property <string> artist;
+    in property <string> album;
+    callback clicked();
+    callback open-artist();
+    height: 84px * Theme.font-scale;
+    background: @linear-gradient(180deg, Theme.tool-top 0%, Theme.tool-bottom 100%);
+    Rectangle { x: 0px; y: 0px; height: 1px; background: Theme.border; }
+    HorizontalLayout {
+        padding: 8px; spacing: 10px;
+        Rectangle {
+            width: 68px * Theme.font-scale; height: 68px * Theme.font-scale;
+            if Theme.spinning-disc: Disc { size: 68px * Theme.font-scale; art: root.art; has-cover: root.has-cover; }
+            if !Theme.spinning-disc: Rectangle {
+                background: Theme.analyzer-bg; border-width: 1px; border-color: Theme.border;
+                if root.has-cover: Image { source: root.art-flat; x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px; image-fit: cover; }
+                if !root.has-cover: Icon { name: "music"; size: 28px; tint: Theme.text-dim; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+            }
+        }
+        VerticalLayout {
+            alignment: center; spacing: 2px; horizontal-stretch: 1; min-width: 0px;
+            Text { text: root.title; color: Theme.text; font-weight: 700; overflow: elide; min-width: 0px; }
+            Rectangle {
+                height: 16px * Theme.font-scale;
+                Text { text: root.artist; color: art-ta.has-hover ? Theme.accent-text : Theme.text-dim; font-size: 12px * Theme.font-scale; overflow: elide; width: parent.width; }
+                art-ta := TouchArea { mouse-cursor: pointer; clicked => { root.open-artist(); } }
+            }
+            Text { text: root.album; color: Theme.text-dim; font-size: 11px * Theme.font-scale; overflow: elide; min-width: 0px; }
+        }
+    }
+    TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}

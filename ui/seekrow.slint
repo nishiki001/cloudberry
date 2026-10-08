@@ -1,0 +1,27 @@
+import { Theme } from "theme.slint";
+import { HSlider } from "hslider.slint";
+
+export component SeekRow inherits Rectangle {
+    in property <string> elapsed: "0:00";
+    in property <string> total: "0:00";
+    in-out property <float> position;
+    in property <float> buffered;
+    in-out property <bool> seeking;
+    in property <bool> enabled: true;
+    callback seek(float);
+    height: 24px * Theme.font-scale;
+    background: Theme.window;
+    HorizontalLayout {
+        padding-left: 10px; padding-right: 10px; spacing: 8px;
+        Text { text: root.elapsed; color: Theme.text; width: 46px; vertical-alignment: center; horizontal-alignment: right; font-size: 12px * Theme.font-scale; }
+        HSlider {
+            horizontal-stretch: 1;
+            value <=> root.position;
+            dragging <=> root.seeking;
+            buffered: root.buffered;
+            enabled: root.enabled;
+            released(v) => { root.seek(v); }
+        }
+        Text { text: root.total; color: Theme.text-dim; width: 46px; vertical-alignment: center; font-size: 12px * Theme.font-scale; }
+    }
+}

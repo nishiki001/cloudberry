@@ -1,0 +1,32 @@
+import { TrackData, TreeRow } from "types.slint";
+
+// Data and callbacks of the sidebar panels (search results, library tree/page, lyrics).
+// Rust reaches them with `ui.global::<Panels>()`.
+export global Panels {
+    in property <[TrackData]> results;
+    in property <[TreeRow]> tree;
+    in property <[TrackData]> library;
+    in property <string> library-mode: "menu";
+    in property <string> library-title;
+    in property <[string]> lyrics;
+    in property <int> lyrics-current: -1;
+    in property <bool> lyrics-synced;
+    in property <string> lyrics-status;
+    in property <string> lyrics-source;
+    in property <bool> busy;
+    in property <bool> search-loading;
+    in property <bool> search-end;
+    callback search-more();
+    in-out property <int> panel-selected: -1;
+    callback submit-search(string);
+    callback search-activate(int);
+    callback search-filter(string);
+    callback tree-clicked(int);
+    callback tree-activated(int);
+    callback tree-context(string, int);
+    callback library-open(string);
+    callback library-back();
+    callback play-all();
+    callback shuffle-all();
+    callback panel-activate(int);
+}

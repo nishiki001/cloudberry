@@ -1,0 +1,138 @@
+import { Palette } from "std-widgets.slint";
+
+// Design tokens. The colour values are derived in Rust (src/core/theme.rs, unit-tested for
+// contrast) and pushed in at startup and whenever the theme changes; the values below are only
+// the "system light" fallback until then. Components never hardcode colours.
+export global Theme {
+    // 0 = follow system, 1 = light, 2 = dark
+    in-out property <int> mode: 0;
+    out property <bool> system-dark: Palette.color-scheme == ColorScheme.dark;
+    out property <bool> dark: mode == 2 || (mode == 0 && system-dark);
+
+    in-out property <color> window: #EFF0F1;
+    in-out property <color> base: #FCFCFC;
+    in-out property <color> alt-row: #F4F5F6;
+    // opacity of the row layer over a background image (computed in Rust for contrast)
+    in-out property <float> base-alpha: 1.0;
+    out property <color> base-t: base.with-alpha(base-alpha);
+    out property <color> alt-row-t: alt-row.with-alpha(base-alpha);
+    in-out property <color> border: #C9CCD0;
+    in-out property <color> text: #232629;
+    in-out property <color> text-dim: #6E7378;
+    in-out property <color> accent: #3DAEE9;
+    out property <color> error: dark ? #FF7B6B : #C0392B;
+    in-out property <color> accent-text: #1F7FB5;
+    /// Icon / text colour on a solid accent fill.
+    in-out property <color> on-accent: #FFFFFF;
+    in-out property <color> selection: #D8EEFA;
+    // gradient pairs (top → bottom)
+    in-out property <color> btn-top: #F7F8F8;
+    in-out property <color> btn-bottom: #E8E9EA;
+    in-out property <color> btn-hover-top: #FFFFFF;
+    in-out property <color> btn-hover-bottom: #F0F1F2;
+    in-out property <color> header-top: #ECEEEF;
+    in-out property <color> header-bottom: #E3E5E7;
+    in-out property <color> tab-top: #EDEEEF;
+    in-out property <color> tab-bottom: #E6E7E9;
+    in-out property <color> tab-active-top: #FFFFFF;
+    in-out property <color> tab-active-bottom: #FCFCFC;
+    in-out property <color> sel-top: #E0F1FB;
+    in-out property <color> sel-bottom: #D2EAF8;
+    in-out property <color> side-top: #DEDFE0;
+    in-out property <color> side-bottom: #C9CACB;
+    in-out property <color> tool-top: #F3F4F4;
+    in-out property <color> tool-bottom: #E9EAEB;
+    in-out property <color> analyzer-bg: #E4E7EA;
+    in-out property <float> bevel-alpha: 0.5;
+    out property <color> bevel: #FFFFFF.with-alpha(bevel-alpha);
+    out property <color> shadow: #00000040;
+    out property <color> scroll-track: dark ? #FFFFFF10 : #00000012;
+    out property <color> scroll-thumb: dark ? #FFFFFF40 : #00000040;
+    out property <color> scroll-thumb-hover: dark ? #FFFFFF66 : #00000066;
+    out property <color> scrim: #000000A0;
+
+    out property <length> side-tab-w: 64px * Theme.font-scale;
+    out property <length> row-h: 24px * Theme.font-scale;
+    out property <length> tool-btn: 30px * Theme.font-scale;
+    out property <length> radius: 3px;
+    /// Outer spacing between panes and to the window edge (splitter width, table right/bottom margin).
+    out property <length> gap: 6px;
+    out property <duration> dur-fast: 120ms;
+    out property <duration> dur-med: 350ms;
+    out property <duration> dur-slow: 1200ms;
+    out property <length> radius-panel: 4px;
+
+    in-out property <bool> reduce-motion: false;
+    // skin tokens (src/core/skin.rs): Classic = all zero / false
+    in-out property <string> skin: "classic";
+    in-out property <float> gloss: 0.0;
+    in-out property <float> rim-alpha: 0.0;
+    in-out property <float> glow: 0.0;
+    in-out property <length> btn-radius: 3px;
+    in-out property <bool> orb: false;
+    in-out property <bool> pill: false;
+    in-out property <bool> tube: false;
+    /// Window size (kept up to date by the window; popups use it to stay on screen).
+    in-out property <length> win-w: 1200px;
+    in-out property <length> win-h: 760px;
+    /// Spinning-disc cover instead of the flat one (needs the GL renderer).
+    in-out property <bool> spinning-disc: false;
+    /// Degrees per second at full speed (from the "disc speed" setting; default 1 turn / 8 s).
+    in-out property <float> disc-speed: 45;
+    /// Current rotation of the spinning discs (advanced by `gui/analyzer.rs`).
+    in-out property <angle> disc-angle: 0deg;
+    /// Font settings (Settings → Fonts): UI family ("" = system default), lyrics family
+    /// (already resolved: the UI family when no separate one is chosen) and the size factor
+    /// relative to the 13 px design size.
+    in-out property <string> font-family: "";
+    in-out property <string> lyrics-family: "";
+    in-out property <float> font-scale: 1.0;
+}
+
+// Procedural images generated in Rust at startup (see src/art.rs).
+export global Art {
+    in property <image> sheen;
+    in property <image> blank-disc;
+}
+
+// Playlist background image (two layers for the crossfade); pixels rendered by Rust at the
+// table's size (src/core/background.rs).
+export global Backdrop {
+    in property <bool> active: false;
+    in property <image> a;
+    in property <image> b;
+    in property <bool> show-b: false;
+    in property <float> opacity: 0.5;
+    callback resized(int, int);
+}
+
+// Appearance settings edited in the settings dialog; Rust reads them back on `changed`.
+export global Appearance {
+    in-out property <bool> custom: false;
+    in-out property <string> accent;
+    in-out property <string> window-color;
+    in-out property <string> text-color;
+    in-out property <string> bg-mode: "none"; // none | pattern | cover | image
+    in-out property <string> bg-path;
+    in-out property <string> bg-fit: "cover"; // cover | contain | stretch
+    in-out property <string> bg-pos: "center"; // top | center | bottom
+    in-out property <float> bg-opacity: 0.5; // 0..1
+    in-out property <float> bg-blur: 0.0; // 0..1 (of 24 px)
+    in-out property <float> bg-tint: 0.0; // 0..1 (of 0.8)
+    in-out property <string> bg-tint-color; // "" = theme base
+    in-out property <string> analyzer-scheme: "accent"; // accent | classic | ice | sunset | mono | custom
+    in-out property <string> analyzer-c1;
+    in-out property <string> analyzer-c2;
+    in-out property <string> analyzer-c3;
+    in-out property <string> analyzer-peak; // "" = derived
+    callback analyzer-changed();
+    in property <[{name: string, color: color, hex: string}]> presets;
+    in property <string> bg-error;
+    /// File name and a small preview of the chosen background picture.
+    in property <string> bg-name;
+    in property <image> bg-preview;
+    in property <bool> bg-has-preview;
+    callback browse-bg();
+    callback clear-bg();
+    callback changed();
+}

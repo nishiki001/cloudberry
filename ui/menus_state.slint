@@ -1,0 +1,85 @@
+import { MenuItemData, SubItem } from "types.slint";
+
+// Dynamic menu content provided by Rust (`ui.global::<Menus>()`).
+export global Menus {
+    /// Header menu of the playlist table: one entry per column, ticked when shown.
+    in property <[MenuItemData]> column-menu;
+    /// Own playlists for "Add to playlist" (most recently used first).
+    in property <[SubItem]> playlists: [{ label: "New playlist…", id: "pl:__new__", enabled: true }, { label: "Existing playlist…", id: "pl:__existing__", enabled: true }];
+    /// The artists of the row the menu is about to open for (several → a submenu).
+    in property <[SubItem]> artist-sub;
+    /// The table's row menu is open.
+    in-out property <bool> table-menu-open: false;
+    /// A right click is about to open the row menu of row `i`: Rust fills `artist-sub`.
+    callback prepare-row(int);
+    /// Row menu of the playlist table.
+    in property <[MenuItemData]> row-menu: Menus.track-items(true, true, Menus.artist-sub);
+    /// Popup of the "Add current song to playlist" button.
+    in property <[MenuItemData]> player-add: [
+        { label: "New playlist…", id: "pl:__new__", shortcut: "", enabled: true, separator: false, sub: [] },
+        { label: "Existing playlist…", id: "pl:__existing__", shortcut: "", enabled: true, separator: false, sub: [] },
+    ];
+    /// The menu bar: Music, Playlist, View, Tools, Help.
+    in property <[[MenuItemData]]> bar: [
+        [
+            { label: "Play / Pause", shortcut: "Space", id: "play-pause", enabled: true, separator: false, sub: [] },
+            { label: "Stop", shortcut: "", id: "stop", enabled: true, separator: false, sub: [] },
+            { label: "Next", shortcut: "Ctrl+Right", id: "next", enabled: true, separator: false, sub: [] },
+            { label: "Previous", shortcut: "Ctrl+Left", id: "prev", enabled: true, separator: false, sub: [] },
+            { label: "Like / Unlike", shortcut: "Ctrl+L", id: "like", enabled: true, separator: false, sub: [] },
+            { label: "Add to playlist…", shortcut: "Ctrl+P", id: "add-to-playlist", enabled: true, separator: false, sub: [] },
+            { label: "Quit", shortcut: "Ctrl+Q", id: "quit", enabled: true, separator: false, sub: [] },
+        ],
+        [
+            { label: "New playlist tab", shortcut: "Ctrl+T", id: "tab-new", enabled: true, separator: false, sub: [] },
+            { label: "Close tab", shortcut: "Ctrl+W", id: "tab-close", enabled: true, separator: false, sub: [] },
+            { label: "Clear queue", shortcut: "", id: "queue-clear", enabled: true, separator: false, sub: [] },
+            { label: "Shuffle", shortcut: "", id: "shuffle", enabled: true, separator: false, sub: [] },
+            { label: "Repeat mode", shortcut: "", id: "repeat", enabled: true, separator: false, sub: [] },
+        ],
+        [
+            { label: "Theme: system", shortcut: "", id: "theme-system", enabled: true, separator: false, sub: [] },
+            { label: "Theme: light", shortcut: "", id: "theme-light", enabled: true, separator: false, sub: [] },
+            { label: "Theme: dark", shortcut: "", id: "theme-dark", enabled: true, separator: false, sub: [] },
+            { label: "Analyzer: block", shortcut: "", id: "an-block", enabled: true, separator: false, sub: [] },
+            { label: "Analyzer: bars", shortcut: "", id: "an-bars", enabled: true, separator: false, sub: [] },
+            { label: "Analyzer: wave", shortcut: "", id: "an-wave", enabled: true, separator: false, sub: [] },
+            { label: "Analyzer: curve", shortcut: "", id: "an-curve", enabled: true, separator: false, sub: [] },
+            { label: "Analyzer: mirror bars", shortcut: "", id: "an-mirror", enabled: true, separator: false, sub: [] },
+            { label: "Analyzer: dots", shortcut: "", id: "an-dots", enabled: true, separator: false, sub: [] },
+            { label: "Analyzer: off", shortcut: "", id: "an-off", enabled: true, separator: false, sub: [] },
+            { label: "Mini player", shortcut: "Ctrl+M", id: "mini", enabled: true, separator: false, sub: [] },
+            { label: "Show / hide sidebar", shortcut: "", id: "sidebar", enabled: true, separator: false, sub: [] },
+        ],
+        [
+            { label: "Settings…", shortcut: "Ctrl+,", id: "settings", enabled: true, separator: false, sub: [] },
+            { label: "Sign in…", shortcut: "", id: "signin", enabled: true, separator: false, sub: [] },
+            { label: "Clear cache", shortcut: "", id: "clear-cache", enabled: true, separator: false, sub: [] },
+        ],
+        [
+            { label: "Keyboard shortcuts", shortcut: "", id: "shortcuts", enabled: true, separator: false, sub: [] },
+            { label: "About", shortcut: "", id: "about", enabled: true, separator: false, sub: [] },
+        ],
+    ];
+    /// The ONE track menu (table, search, library, Now, queue, artist, Discover). Items that do not
+    /// apply are disabled, never missing: `track` false (card is not a song), `remove` (list edit).
+    public pure function track-items(track: bool, remove: bool, artists: [SubItem]) -> [MenuItemData] {
+        return [
+            { label: "Play", id: "play", shortcut: "", enabled: true, separator: false, sub: [] },
+            { label: "Play next", id: "play-next", shortcut: "", enabled: track, separator: false, sub: [] },
+            { label: "Add to queue", id: "enqueue", shortcut: "", enabled: track, separator: false, sub: [] },
+            { label: "Add to playlist", id: "", shortcut: "", enabled: track, separator: false, sub: track ? Menus.playlists : [] },
+            { label: "Open in new tab", id: "open-tab", shortcut: "", enabled: !track, separator: false, sub: [] },
+            { label: "Add to playlist tab", id: "add-to-tab", shortcut: "", enabled: track, separator: false, sub: [] },
+            { label: "Start radio", id: "radio", shortcut: "", enabled: track, separator: false, sub: [] },
+            { label: "", id: "", shortcut: "", enabled: false, separator: true, sub: [] },
+            { label: "Go to artist", id: "artist", shortcut: "", enabled: track, separator: false, sub: artists.length > 1 ? artists : [] },
+            { label: "Go to album", id: "album", shortcut: "", enabled: track, separator: false, sub: [] },
+            { label: "", id: "", shortcut: "", enabled: false, separator: true, sub: [] },
+            { label: "Like / unlike", id: "like", shortcut: "Ctrl+L", enabled: track, separator: false, sub: [] },
+            { label: "Copy link", id: "copy-link", shortcut: "", enabled: track, separator: false, sub: [] },
+            { label: "", id: "", shortcut: "", enabled: false, separator: true, sub: [] },
+            { label: "Remove", id: "remove", shortcut: "Del", enabled: remove, separator: false, sub: [] },
+        ];
+    }
+}

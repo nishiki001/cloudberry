@@ -1,0 +1,55 @@
+{
+ "names": [
+  "play",
+  "pause",
+  "stop",
+  "prev",
+  "next",
+  "shuffle",
+  "repeat",
+  "repeat-one",
+  "volume",
+  "volume-low",
+  "mute",
+  "heart",
+  "search",
+  "library",
+  "now",
+  "lists",
+  "discover",
+  "settings",
+  "add",
+  "playlist-add",
+  "close",
+  "back",
+  "forward",
+  "down",
+  "sort-up",
+  "sort-down",
+  "more",
+  "refresh",
+  "music",
+  "lyrics",
+  "history",
+  "user",
+  "list",
+  "check",
+  "equalizer",
+  "no-image",
+  "folder"
+ ],
+ "sets": {
+  "line": {
+   "label": "Line",
+   "mono": true
+  },
+  "aero": {
+   "label": "Aero",
+   "mono": false
+  },
+  "pixel": {
+   "label": "Pixel",
+   "mono": false
+  }
+ }
+}

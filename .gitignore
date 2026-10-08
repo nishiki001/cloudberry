@@ -1,0 +1,19 @@
+/target
+*.cookies.txt
+cookies*.txt
+.env
+.env.*
+.claude/settings.local.json
+.idea/
+
+# generated at release time (assets/icons/app/make_icons.py)
+assets/icons/app/cloudberry.ico
+assets/icons/app/cloudberry.icns
+dist/
+
+# personal / working files (kept on disk, not published)
+TODO-ME.md
+docs/PLAN*.md
+docs/REFERENCE.md
+docs/screenshots/
+.claude/

@@ -1,0 +1,30 @@
+import { Theme } from "theme.slint";
+
+/// The active icon set (`icon_set` setting). Rust answers `lookup` from the SVGs of
+/// assets/icons/<set>/; mono sets are recoloured with the icon's tint, the colourful one is not.
+export global Icons {
+    in-out property <string> set: "line";
+    in-out property <bool> mono: true;
+    pure callback lookup(string, string) -> image;
+}
+
+// Icons by canonical name (assets/icons/manifest.json), one size grid: 16 px in lists,
+// 20-22 px in toolbars.
+export component Icon inherits Rectangle {
+    in property <string> name;
+    in property <color> tint: Theme.text;
+    in property <length> size: 18px;
+    // The Pixel set is drawn on a 16 px grid: it is shown at 16 px or at a whole multiple (never
+    // scaled by a fraction, which would smear the pixels).
+    property <length> px: Icons.set == "pixel"
+        ? 16px * Math.max(1, Math.floor(root.size * Theme.font-scale / 16px + 0.2))
+        : root.size * Theme.font-scale;
+    width: root.px;
+    height: root.px;
+    Image {
+        source: Icons.lookup(root.name, Icons.set);
+        colorize: Icons.mono ? root.tint : transparent;
+        width: parent.width;
+        height: parent.height;
+    }
+}

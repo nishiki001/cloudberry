@@ -1,0 +1,39 @@
+import { Theme } from "theme.slint";
+import { MenuItemData } from "types.slint";
+import { MenuPanel } from "menu_panel.slint";
+import { Menus } from "menus_state.slint";
+
+// A context menu in the app's look. Place it over the element it belongs to (same size) and call
+// `open(x, y)` with the pointer position from a right-click handler.
+export component ThemedMenu inherits Rectangle {
+    in property <[MenuItemData]> entries;
+    callback activated(string);
+    /// The table's row menu reports whether it is open (a list refresh waits for it to close).
+    in property <bool> reports-open: false;
+    property <bool> is-open: popup.is-open;
+    changed is-open => { if (root.reports-open) { Menus.table-menu-open = root.is-open; } }
+    property <length> px: 0px;
+    property <length> py: 0px;
+    // keep the panel inside the window (it flips up / left near the edges)
+    property <length> est-h: root.entries.length * 24px * Theme.font-scale + 12px;
+    public function open(x: length, y: length) {
+        root.px = Math.min(x, Math.max(0px, Theme.win-w - (230px + 210px + 10px) * Theme.font-scale - root.absolute-position.x));
+        root.py = (root.absolute-position.y + y + root.est-h > Theme.win-h) ? Math.max(-root.absolute-position.y, y - root.est-h) : y;
+        popup.show();
+    }
+    width: 0px;
+    height: 0px;
+    popup := PopupWindow {
+        x: root.px; y: root.py;
+        close-policy: close-on-click-outside;
+        // The popup root must have the panel's size: with 0×0 every click counts as "outside"
+        // and closes the popup before the row sees it.
+        width: panel.width; height: panel.height;
+        panel := MenuPanel {
+            x: 0px; y: 0px;
+            entries: root.entries;
+            activated(id) => { popup.close(); root.activated(id); }
+            closed => { popup.close(); }
+        }
+    }
+}

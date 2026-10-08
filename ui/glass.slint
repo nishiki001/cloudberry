@@ -1,0 +1,37 @@
+import { Theme } from "theme.slint";
+
+// Glass surface of the Aero skin: gradient face, a curved gloss highlight over the top half,
+// a soft inner glow along the bottom edge and a bright 1 px rim inside the outer edge. All
+// strengths come from the skin tokens in `Theme` (zero tokens draw nothing extra), and every
+// colour derives from the active tone.
+export component Glass inherits Rectangle {
+    in property <color> top: Theme.btn-top;
+    in property <color> bottom: Theme.btn-bottom;
+    in property <color> edge: Theme.border;
+    in property <length> radius: Theme.btn-radius;
+    /// Glow colour along the bottom (the accent by default).
+    in property <color> glow-color: Theme.accent;
+    /// Scales the gloss (1 = the skin's strength).
+    in property <float> gloss-scale: 1.0;
+    border-radius: root.radius;
+    background: @linear-gradient(180deg, root.top 0%, root.bottom 100%);
+    border-width: 1px;
+    border-color: root.edge;
+    clip: true;
+    if Theme.glow > 0: Rectangle { // inner glow
+        x: 0px; y: parent.height * 0.42; width: parent.width; height: parent.height * 0.58;
+        background: @linear-gradient(180deg, root.glow-color.with-alpha(0.0) 0%, root.glow-color.with-alpha(Theme.glow * 0.5) 100%);
+    }
+    if Theme.gloss > 0: Rectangle { // curved gloss highlight on the top half
+        x: -parent.width * 0.14; y: -parent.height * 0.62; width: parent.width * 1.28; height: parent.height * 1.16;
+        border-radius: self.height / 2;
+        background: @linear-gradient(180deg, #FFFFFF.with-alpha(Math.min(0.95, Theme.gloss * root.gloss-scale * 0.9)) 0%, #FFFFFF.with-alpha(Theme.gloss * root.gloss-scale * 0.08) 100%);
+    }
+    if Theme.rim-alpha > 0: Rectangle { // bright inner rim
+        x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px;
+        border-radius: Math.max(0px, root.radius - 1px);
+        border-width: 1px;
+        border-color: #FFFFFF.with-alpha(Theme.dark ? Theme.rim-alpha * 0.28 : Theme.rim-alpha);
+    }
+    @children
+}

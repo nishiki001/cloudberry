@@ -1,0 +1,79 @@
+import { Theme } from "theme.slint";
+import { ArtistPage } from "artist_state.slint";
+import { Button } from "button.slint";
+import { Icon } from "icon.slint";
+import { SongList } from "song_list.slint";
+import { DiscoverShelf } from "discover_shelf.slint";
+
+// The artist page tab: wide blurred banner with the round picture, name, stats, description and
+// Play / Shuffle / Radio; the top songs; then shelves of albums, singles, videos, featured-on
+// and related artists (round avatars).
+export component ArtistView inherits Rectangle {
+    background: Theme.base;
+    border-width: 1px; border-color: Theme.border;
+    clip: true;
+    property <length> desc-h: ArtistPage.expanded ? 150px : 52px;
+
+    flick := Flickable {
+        width: parent.width; height: parent.height;
+        content-width: self.width;
+        content-height: col.preferred-height + 12px;
+        col := VerticalLayout {
+            width: flick.width; spacing: 8px; alignment: start;
+            Rectangle { // header
+                height: 176px + root.desc-h;
+                background: Theme.analyzer-bg;
+                if ArtistPage.has-banner: Image { source: ArtistPage.banner; width: parent.width; height: parent.height; image-fit: cover; }
+                Rectangle { background: @linear-gradient(180deg, #00000000 0%, Theme.base.with-alpha(0.0) 40%, Theme.base 100%); }
+                HorizontalLayout {
+                    x: 8px; y: 8px; height: 26px; width: 180px; spacing: 6px;
+                    Button { label: "Back"; icon: "back"; enabled: ArtistPage.can-back; clicked => { ArtistPage.back(); } }
+                    Button { label: "Forward"; enabled: ArtistPage.can-forward; clicked => { ArtistPage.forward(); } }
+                }
+                Rectangle {
+                    x: 20px; y: 50px; width: 112px; height: 112px; border-radius: ArtistPage.album-mode ? 6px : 56px; clip: true;
+                    background: Theme.btn-top; border-width: 2px; border-color: Theme.base;
+                    if ArtistPage.has-avatar: Image { source: ArtistPage.avatar; width: parent.width; height: parent.height; image-fit: cover; }
+                    if !ArtistPage.has-avatar: Icon { name: "user"; size: 48px; tint: Theme.text-dim; x: 32px; y: 32px; }
+                }
+                Text { x: 152px; y: 46px; width: parent.width - 172px; height: 40px; text: ArtistPage.name; color: Theme.text; font-size: 30px * Theme.font-scale; font-weight: 700; overflow: elide; vertical-alignment: center; }
+                if ArtistPage.album-mode: Rectangle {
+                    x: 152px; y: 88px; width: parent.width - 172px; height: 18px;
+                    Text { width: parent.width; text: ArtistPage.byline + "  ·  " + ArtistPage.stats; color: bl-ta.has-hover ? Theme.accent-text : Theme.text-dim; overflow: elide; }
+                    bl-ta := TouchArea { mouse-cursor: pointer; clicked => { ArtistPage.byline-clicked(); } }
+                }
+                if !ArtistPage.album-mode: Text { x: 152px; y: 88px; width: parent.width - 172px; height: 18px; text: ArtistPage.stats; color: Theme.text-dim; overflow: elide; }
+                Rectangle {
+                    x: 152px; y: 110px; width: parent.width - 172px; height: root.desc-h;
+                    Text { width: parent.width; height: parent.height; text: ArtistPage.description; color: Theme.text; font-size: 13px * Theme.font-scale; wrap: word-wrap; overflow: elide; }
+                    TouchArea { mouse-cursor: pointer; clicked => { ArtistPage.expanded = !ArtistPage.expanded; } }
+                }
+                HorizontalLayout {
+                    x: 152px; y: parent.height - 38px; height: 28px; width: 330px; spacing: 8px;
+                    Button { label: "Play"; icon: "play"; primary: true; clicked => { ArtistPage.play(); } }
+                    Button { label: "Shuffle"; icon: "shuffle"; clicked => { ArtistPage.shuffle(); } }
+                    if !ArtistPage.album-mode: Button { label: "Radio"; icon: "now"; clicked => { ArtistPage.radio(); } }
+                }
+            }
+            if ArtistPage.songs.length > 0: Rectangle {
+                height: 34px + ArtistPage.songs.length * 30px;
+                Text { x: 12px; y: 4px; height: 26px; width: parent.width - 150px; text: ArtistPage.songs-title; color: Theme.text; font-size: 17px * Theme.font-scale; font-weight: 700; vertical-alignment: center; }
+                if ArtistPage.has-all-songs: Button { x: parent.width - 120px; y: 4px; width: 108px; height: 24px; label: "Show all"; font-size: 12px * Theme.font-scale; clicked => { ArtistPage.show-all-songs(); } }
+                SongList {
+                    x: 8px; y: 34px; width: parent.width - 16px;
+                    rows: ArtistPage.songs;
+                    activated(i) => { ArtistPage.song-activated(i); }
+                    context(a, i) => { ArtistPage.song-context(a, i); }
+                }
+            }
+            for shelf[si] in ArtistPage.shelves: DiscoverShelf {
+                shelf: shelf; owner: "artist-shelf:" + si;
+                on-screen: self.y + self.height + 240px > -flick.content-y && self.y < -flick.content-y + flick.height + 240px;
+                clicked(i) => { ArtistPage.card-clicked(si, i); }
+                play(i) => { ArtistPage.card-play(si, i); }
+                context(a, i) => { ArtistPage.card-context(a, si, i); }
+                shown(i) => { ArtistPage.card-shown(si, i); }
+            }
+        }
+    }
+}

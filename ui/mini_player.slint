@@ -1,0 +1,70 @@
+import { Theme } from "theme.slint";
+import { ToolButton } from "toolbtn.slint";
+import { AddToPlaylistButton } from "add_button.slint";
+import { HSlider } from "hslider.slint";
+import { Analyzer } from "analyzer.slint";
+import { Art } from "theme.slint";
+
+// Mini player (Ctrl+M): cover, title / artist, small analyzer, transport and seek bar.
+export component MiniPlayer inherits Rectangle {
+    in property <image> art-flat;
+    in property <bool> has-cover;
+    in property <bool> playing;
+    in property <string> title;
+    in property <string> artist;
+    in property <string> album;
+    in property <string> elapsed;
+    in property <string> total;
+    in-out property <float> position;
+    in property <float> buffered;
+    in-out property <bool> seeking;
+    in property <image> analyzer-frame;
+    in property <string> analyzer-style: "block";
+    in property <int> analyzer-fps: 30;
+    callback toggle-play();
+    callback restore();
+    callback prev();
+    callback next();
+    in property <bool> has-track: true;
+    callback add-to-playlist(string);
+    callback seek(float);
+    callback analyzer-resized(int, int);
+    background: @linear-gradient(180deg, Theme.tool-top 0%, Theme.tool-bottom 100%);
+
+    HorizontalLayout {
+        padding: 8px; spacing: 10px;
+        Rectangle {
+            width: 104px * Theme.font-scale; height: 104px * Theme.font-scale;
+            background: Theme.analyzer-bg; border-width: 1px; border-color: Theme.border;
+            Image { source: root.has-cover ? root.art-flat : Art.blank-disc; width: parent.width; height: parent.height; image-fit: cover; }
+        }
+        VerticalLayout {
+            spacing: 3px; horizontal-stretch: 1; min-width: 0px;
+            Text { text: root.title; color: Theme.text; font-size: 14px * Theme.font-scale; font-weight: 700; overflow: elide; height: 18px * Theme.font-scale; min-width: 0px; }
+            Text {
+                text: root.album != "" ? root.artist + " · " + root.album : root.artist;
+                color: Theme.text-dim; font-size: 12px * Theme.font-scale; overflow: elide; height: 16px * Theme.font-scale; min-width: 0px;
+            }
+            if root.analyzer-style != "off": Analyzer {
+                vertical-stretch: 1; min-width: 0px;
+                frame: root.analyzer-frame; style: root.analyzer-style; fps: root.analyzer-fps;
+                resized(w, h) => { root.analyzer-resized(w, h); }
+            }
+            if root.analyzer-style == "off": Rectangle { vertical-stretch: 1; }
+            HorizontalLayout {
+                height: 30px * Theme.font-scale; spacing: 2px; min-width: 0px;
+                ToolButton { icon: "prev"; clicked => { root.prev(); } }
+                ToolButton { icon: root.playing ? "pause" : "play"; icon-size: 20px; clicked => { root.toggle-play(); } }
+                ToolButton { icon: "next"; clicked => { root.next(); } }
+                AddToPlaylistButton { icon-size: 16px; enabled: root.has-track; chosen(id) => { root.add-to-playlist(id); } }
+                ToolButton { icon: "lists"; icon-size: 16px; clicked => { root.restore(); } }
+                HSlider {
+                    horizontal-stretch: 1; min-width: 0px; y: 6px * Theme.font-scale;
+                    value <=> root.position; dragging <=> root.seeking; buffered: root.buffered;
+                    released(v) => { root.seek(v); }
+                }
+                Text { text: root.elapsed; color: Theme.text-dim; font-size: 11px * Theme.font-scale; width: 38px * Theme.font-scale; vertical-alignment: center; horizontal-alignment: right; overflow: elide; }
+            }
+        }
+    }
+}

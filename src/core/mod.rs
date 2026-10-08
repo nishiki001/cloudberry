@@ -1,0 +1,27 @@
+//! UI-independent core: no Slint imports in here.
+pub mod analyzer;
+pub mod analyzer_colors;
+pub mod analyzer_curve;
+pub mod analyzer_layout;
+pub mod analyzer_render;
+pub mod api;
+pub mod appearance;
+pub mod auth;
+pub mod background;
+pub mod color;
+pub mod columns;
+pub mod disc;
+pub mod discover_cache;
+pub mod icons;
+pub mod listcache;
+pub mod lrc;
+pub mod lyrics;
+pub mod model;
+pub mod msg;
+pub mod playlist;
+pub mod queue;
+pub mod runtime;
+pub mod skin;
+pub mod tabs;
+pub mod theme;
+pub mod thumbs;

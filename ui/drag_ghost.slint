@@ -1,0 +1,12 @@
+import { Theme } from "theme.slint";
+
+// The label that follows the pointer while rows are dragged from a sidebar list.
+export component DragGhost inherits Rectangle {
+    in property <string> text;
+    width: label.preferred-width + 16px;
+    height: 24px;
+    background: Theme.base;
+    border-width: 1px;
+    border-color: Theme.accent;
+    label := Text { x: 8px; text: root.text; color: Theme.text; vertical-alignment: center; height: parent.height; }
+}

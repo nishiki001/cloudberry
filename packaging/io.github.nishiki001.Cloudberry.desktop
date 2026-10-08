@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Cloudberry
+GenericName=Music Player
+Comment=Unofficial desktop music player client (not affiliated with Google)
+Exec=cloudberry
+Icon=io.github.nishiki001.Cloudberry
+Terminal=false
+Categories=AudioVideo;Audio;Player;Music;
+StartupWMClass=io.github.nishiki001.Cloudberry
+Keywords=music;player;
+StartupNotify=true

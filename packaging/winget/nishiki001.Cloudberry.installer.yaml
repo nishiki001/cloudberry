@@ -1,0 +1,13 @@
+PackageIdentifier: nishiki001.Cloudberry
+PackageVersion: 0.1.0
+InstallerType: nullsoft
+Scope: user
+InstallerSwitches:
+  Silent: /S
+  SilentWithProgress: /S
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/nishiki001/cloudberry/releases/download/v0.1.0/Cloudberry-windows-x86_64-setup.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000 # from SHA256SUMS
+ManifestType: installer
+ManifestVersion: 1.6.0

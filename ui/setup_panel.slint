@@ -1,0 +1,37 @@
+import { Theme } from "theme.slint";
+import { Button } from "button.slint";
+import { Modal } from "modal.slint";
+
+// First run: pick the browser you are signed in to and export cookies through yt-dlp.
+export component SetupPanel inherits Modal {
+    in-out property <string> browser: "firefox";
+    in property <string> status;
+    in property <bool> busy;
+    callback run();
+    callback skip();
+    callback import-cookies();
+    heading: "Sign in to use your library";
+    panel-width: 540px;
+
+    Text {
+        text: "Cloudberry reuses your existing YouTube Music sign-in. Pick the browser you are signed in to; yt-dlp exports only the YouTube/Google cookies (you may be asked to unlock your keyring). Or skip and use it without an account.";
+        color: Theme.text-dim; font-size: 13px * Theme.font-scale; wrap: word-wrap;
+    }
+    HorizontalLayout {
+        spacing: 6px; alignment: start;
+        for b in ["firefox", "chrome", "chromium", "brave", "edge", "vivaldi", "safari"]: Button {
+            label: b;  active: root.browser == b;
+            clicked => { root.browser = b; }
+        }
+    }
+    Text {
+        text: root.busy ? "Working…" : root.status;
+        color: Theme.text; font-size: 13px * Theme.font-scale; wrap: word-wrap;
+    }
+    HorizontalLayout {
+        spacing: 8px; alignment: end;
+        Button { label: "Import cookies.txt…";  clicked => { root.import-cookies(); } }
+        Button { label: "Skip";  clicked => { root.skip(); } }
+        Button { label: root.busy ? "…" : "Set up";  primary: true; active: true; clicked => { if (!root.busy) { root.run(); } } }
+    }
+}

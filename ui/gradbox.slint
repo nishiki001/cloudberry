@@ -1,0 +1,18 @@
+import { Theme } from "theme.slint";
+
+// Raised surface: soft top→bottom gradient, 1 px border, faint highlight along the top edge.
+export component GradBox inherits Rectangle {
+    in property <color> top: Theme.btn-top;
+    in property <color> bottom: Theme.btn-bottom;
+    in property <bool> bevel: true;
+    in property <color> edge: Theme.border;
+    background: @linear-gradient(180deg, root.top 0%, root.bottom 100%);
+    border-width: 1px;
+    border-color: root.edge;
+    if root.bevel: Rectangle {
+        x: 1px; y: 1px;
+        width: parent.width - 2px; height: 1px;
+        background: Theme.bevel;
+    }
+    @children
+}

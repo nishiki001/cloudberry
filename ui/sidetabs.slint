@@ -1,0 +1,50 @@
+import { Theme } from "theme.slint";
+import { Icon, Icons } from "icon.slint";
+import { Glass } from "glass.slint";
+import { Sheen } from "sheen.slint";
+
+// Vertical tab strip: icon over a small label, dark gradient like a classic sidebar.
+export component SideTabs inherits Rectangle {
+    in-out property <int> current: 0;
+    callback selected(int);
+    width: Theme.side-tab-w;
+    background: @linear-gradient(180deg, Theme.side-top 0%, Theme.side-bottom 100%);
+
+    // Aero skin with the colourful icon set: big glass tiles that read as buttons
+    property <bool> big: Theme.gloss > 0 && !Icons.mono;
+    property <[{icon: string, label: string}]> tabs: [
+        { icon: "now", label: "Now" },
+        { icon: "library", label: "Library" },
+        { icon: "search", label: "Search" },
+        { icon: "lists", label: "Lists" },
+        { icon: "discover", label: "Discover" },
+    ];
+    VerticalLayout {
+        padding-top: 4px; spacing: 2px; alignment: start;
+        for t[i] in root.tabs: Rectangle {
+            height: (root.big ? 76px : 58px) * Theme.font-scale;
+            background: i == root.current ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%) : ta.has-hover ? Theme.bevel.with-alpha(0.12) : transparent;
+            border-width: i == root.current ? 1px : 0px;
+            border-color: Theme.accent;
+            VerticalLayout {
+                alignment: center; spacing: 3px;
+                Rectangle {
+                    height: (root.big ? 48px : Theme.gloss > 0 ? 32px : 24px) * Theme.font-scale;
+                    if Theme.gloss > 0: Glass {
+                        width: root.big ? parent.width - 10px : 36px * Theme.font-scale; height: root.big ? parent.height : 32px * Theme.font-scale; x: (parent.width - self.width) / 2;
+                        radius: root.big ? 13px : 9px;
+                        top: i == root.current ? Theme.accent.with-alpha(0.55) : ta.has-hover ? Theme.accent.with-alpha(0.32) : Theme.btn-top;
+                        bottom: i == root.current ? Theme.accent.with-alpha(0.85) : ta.has-hover ? Theme.accent.with-alpha(0.5) : Theme.btn-bottom;
+                        glow-color: Theme.accent;
+                        gloss-scale: i == root.current || ta.has-hover ? (root.big ? 1.35 : 1.15) : 0.8;
+                        edge: root.big && (i == root.current || ta.has-hover) ? Theme.accent : Theme.border;
+                    }
+                    Icon { name: t.icon; size: root.big ? 30px : Icons.set == "pixel" ? 32px : 24px; tint: Theme.text; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                }
+                Text { text: t.label; color: Theme.text; font-size: 11px * Theme.font-scale; horizontal-alignment: center; }
+            }
+            ta := TouchArea { clicked => { root.current = i; root.selected(i); } }
+        }
+    }
+    Rectangle { x: parent.width - 1px; width: 1px; background: Theme.border; }
+}

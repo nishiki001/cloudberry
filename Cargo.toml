@@ -1,0 +1,103 @@
+[package]
+name = "cloudberry"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+description = "Unofficial desktop client for YouTube Music"
+authors = ["nishiki001"]
+repository = "https://github.com/nishiki001/cloudberry"
+readme = "README.md"
+
+[features]
+default = []
+# libmpv fallback backend (off by default: packages need no libmpv); native needs only yt-dlp + deno
+mpv = ["dep:libmpv2", "dep:libmpv2-sys"]
+# distro packages: yt-dlp / deno come from the system, no downloads, no updater
+system-tools = []
+
+[dependencies]
+anyhow = "1.0.104"
+clap = { version = "4.6.7", features = ["derive"] }
+cpal = "0.18.2"
+directories = "6.0.0"
+fontdb = "0.24.0"
+hex = "0.4.3"
+image = "0.25.10"
+libmpv2 = { version = "6.0.0", optional = true }
+libmpv2-sys = { version = "4.0.1", optional = true }
+realfft = "3.5.0"
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json", "gzip", "query", "blocking", "stream"] }
+rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
+rtrb = "0.4.0"
+rubato = "5.0.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+sha1 = "0.11.0"
+sha2 = "0.11.0"
+slint = { version = "1.18.1", features = ["renderer-software", "backend-winit", "software-renderer-systemfonts"] }
+souvlaki = { version = "0.8.3", default-features = false, features = ["use_zbus"] }
+symphonia = { version = "0.6.1", default-features = false, features = ["aac", "isomp4", "pcm", "wav"] }
+thiserror = "2.0.21"
+tokio = { version = "1.53.2", features = ["full"] }
+toml = "1.1.6"
+tracing = "0.1.44"
+tracing-appender = "0.2.5"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+
+[build-dependencies]
+slint-build = "1.18.1"
+
+[dev-dependencies]
+i-slint-backend-testing = "1.18.1"
+tempfile = "3.27.0"
+
+# The profile that 'dist' will build with
+[package.metadata.deb]
+name = "cloudberry"
+section = "sound"
+priority = "optional"
+extended-description = "Unofficial desktop client for YouTube Music, not affiliated with Google. Downloads yt-dlp and deno on first start."
+depends = "libc6 (>= 2.35), libasound2 | libasound2t64, libfontconfig1, libxkbcommon0"
+recommends = "libwayland-client0, libxkbcommon-x11-0"
+assets = [
+  ["target/release/cloudberry", "usr/bin/cloudberry", "755"],
+  ["packaging/io.github.nishiki001.Cloudberry.desktop", "usr/share/applications/io.github.nishiki001.Cloudberry.desktop", "644"],
+  ["packaging/io.github.nishiki001.Cloudberry.metainfo.xml", "usr/share/metainfo/io.github.nishiki001.Cloudberry.metainfo.xml", "644"],
+  ["assets/icons/app/png/cloudberry-16.png", "usr/share/icons/hicolor/16x16/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["assets/icons/app/png/cloudberry-22.png", "usr/share/icons/hicolor/22x22/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["assets/icons/app/png/cloudberry-24.png", "usr/share/icons/hicolor/24x24/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["assets/icons/app/png/cloudberry-32.png", "usr/share/icons/hicolor/32x32/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["assets/icons/app/png/cloudberry-48.png", "usr/share/icons/hicolor/48x48/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["assets/icons/app/png/cloudberry-64.png", "usr/share/icons/hicolor/64x64/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["assets/icons/app/png/cloudberry-128.png", "usr/share/icons/hicolor/128x128/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["assets/icons/app/png/cloudberry-256.png", "usr/share/icons/hicolor/256x256/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["assets/icons/app/png/cloudberry-512.png", "usr/share/icons/hicolor/512x512/apps/io.github.nishiki001.Cloudberry.png", "644"],
+  ["README.md", "usr/share/doc/cloudberry/README.md", "644"],
+]
+
+[package.metadata.generate-rpm]
+name = "cloudberry"
+summary = "Unofficial desktop client for YouTube Music"
+license = "GPL-3.0-or-later"
+# generate-rpm's detected [WEAK] glibc symbols cannot be resolved by dnf: name the libraries instead
+auto-req = "disabled"
+assets = [
+  { source = "target/release/cloudberry", dest = "/usr/bin/cloudberry", mode = "755" },
+  { source = "packaging/io.github.nishiki001.Cloudberry.desktop", dest = "/usr/share/applications/io.github.nishiki001.Cloudberry.desktop", mode = "644" },
+  { source = "packaging/io.github.nishiki001.Cloudberry.metainfo.xml", dest = "/usr/share/metainfo/io.github.nishiki001.Cloudberry.metainfo.xml", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-16.png", dest = "/usr/share/icons/hicolor/16x16/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-22.png", dest = "/usr/share/icons/hicolor/22x22/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-24.png", dest = "/usr/share/icons/hicolor/24x24/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-32.png", dest = "/usr/share/icons/hicolor/32x32/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-48.png", dest = "/usr/share/icons/hicolor/48x48/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-64.png", dest = "/usr/share/icons/hicolor/64x64/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-128.png", dest = "/usr/share/icons/hicolor/128x128/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-256.png", dest = "/usr/share/icons/hicolor/256x256/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+  { source = "assets/icons/app/png/cloudberry-512.png", dest = "/usr/share/icons/hicolor/512x512/apps/io.github.nishiki001.Cloudberry.png", mode = "644" },
+]
+
+[package.metadata.generate-rpm.requires]
+alsa-lib = "*"
+fontconfig = "*"
+libxkbcommon = "*"

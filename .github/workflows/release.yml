@@ -1,0 +1,163 @@
+# One tag -> every format on the GitHub Release page: v0.1.0 builds the tarballs, AppImage, .deb,
+# .rpm, .flatpak bundle (Linux x86_64 + aarch64), the universal macOS .dmg and the Windows
+# installer. The formats are built by scripts/package.sh, so they can be built locally too.
+name: release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-22.04 }
+          - { arch: aarch64, runner: ubuntu-22.04-arm }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libfontconfig1-dev libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev pkg-config python3
+      - name: Packaging tools
+        run: |
+          cargo install cargo-deb cargo-generate-rpm --locked
+          mkdir -p "$HOME/bin"
+          curl -sLo "$HOME/bin/linuxdeploy" "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-${{ matrix.arch }}.AppImage"
+          chmod +x "$HOME/bin/linuxdeploy"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Build and package
+        run: |
+          cargo build --release --locked
+          for f in tar deb rpm appimage; do NO_BUILD=1 scripts/package.sh $f; done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.deb
+            dist/*.rpm
+            dist/*.AppImage
+
+  flatpak:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runner: ubuntu-22.04 }
+          - { arch: aarch64, runner: ubuntu-22.04-arm }
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: Cloudberry-${{ matrix.arch }}.flatpak
+          manifest-path: packaging/flatpak/io.github.nishiki001.Cloudberry.yml
+          arch: ${{ matrix.arch }}
+          cache-key: flatpak-${{ matrix.arch }}-${{ github.sha }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-${{ matrix.arch }}
+          path: Cloudberry-${{ matrix.arch }}.flatpak
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Package (ad-hoc signed; Developer ID signing + notarization when the secrets exist)
+        env:
+          APPLE_CERT: ${{ secrets.APPLE_CERT }}
+          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          APPLE_SIGN_ID: ${{ secrets.APPLE_SIGN_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: scripts/package.sh macos
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*.dmg
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build
+        run: cargo build --release --locked
+      - name: Installer (NSIS) and zip
+        shell: bash
+        run: |
+          python assets/icons/app/make_icons.py
+          choco install nsis -y --no-progress
+          mkdir -p dist
+          VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          "/c/Program Files (x86)/NSIS/makensis.exe" -NOCD -DVERSION=$VERSION packaging/windows/cloudberry.nsi
+          7z a dist/Cloudberry-windows-x86_64.zip ./target/release/cloudberry.exe LICENSE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+
+  release:
+    needs: [linux, flatpak, macos, windows]
+    if: ${{ !cancelled() && needs.linux.result == 'success' && needs.flatpak.result == 'success' && needs.macos.result == 'success' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts, merge-multiple: true }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Vendored sources (for the COPR / distro source builds)
+        run: |
+          cargo vendor --locked vendor > /dev/null
+          tar -cJf artifacts/cloudberry-vendor.tar.xz vendor
+      - name: Checksums
+        run: cd artifacts && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Notes from the commits since the previous tag
+        run: |
+          PREV=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          { echo "Unofficial client for YouTube Music, not affiliated with Google."; echo; echo "## Changes"; \
+            git log --pretty='- %s' ${PREV:+$PREV..}"${GITHUB_REF_NAME}"; } > notes.md
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" artifacts/* --title "$GITHUB_REF_NAME" --notes-file notes.md
+      - name: Package-manager values (AUR / Homebrew / winget)
+        run: |
+          V=${GITHUB_REF_NAME#v}
+          echo "pkgver=$V"; grep -E "linux-(x86_64|aarch64)\.tar\.gz|macos-universal\.dmg|setup\.exe" artifacts/SHA256SUMS
+
+  homebrew:
+    # bumps the cask in nishiki001/homebrew-tap; skipped while the HOMEBREW_TAP_TOKEN secret is absent
+    needs: release
+    runs-on: ubuntu-22.04
+    env:
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.TAP_TOKEN != ''
+      - name: Update the cask
+        if: env.TAP_TOKEN != ''
+        run: |
+          V=${GITHUB_REF_NAME#v}
+          SUM=$(curl -fsSL "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/SHA256SUMS" | awk '$2=="Cloudberry-macos-universal.dmg" {print $1}')
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/nishiki001/homebrew-tap.git" tap
+          mkdir -p tap/Casks
+          sed -e "s/^  version .*/  version \"$V\"/" -e "s/^  sha256 .*/  sha256 \"$SUM\"/" packaging/homebrew/cloudberry.rb > tap/Casks/cloudberry.rb
+          cd tap && git config user.name "release bot" && git config user.email "bot@users.noreply.github.com"
+          git add Casks/cloudberry.rb && git commit -m "cloudberry $V" && git push

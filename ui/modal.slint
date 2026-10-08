@@ -1,0 +1,32 @@
+import { Theme } from "theme.slint";
+
+// Dimmed overlay with a centered panel; clicks outside the panel are swallowed. A panel taller
+// than the window scrolls instead of running off the screen.
+export component Modal inherits Rectangle {
+    in property <string> heading;
+    in property <length> panel-width: 460px;
+    background: Theme.scrim;
+    TouchArea { } // block clicks to the window underneath
+    panel := Rectangle {
+        width: Math.min(root.panel-width * Theme.font-scale, parent.width - 32px);
+        height: Math.min(content.preferred-height, parent.height - 32px);
+        x: (parent.width - self.width) / 2;
+        y: Math.max(16px, (parent.height - self.height) / 2);
+        background: Theme.base;
+        border-radius: Theme.radius-panel + 4px;
+        border-width: 2px;
+        border-color: Theme.border;
+        clip: true;
+        Flickable {
+            x: 0px; y: 0px; width: parent.width; height: parent.height;
+            content-width: self.width;
+            content-height: content.preferred-height;
+            content := VerticalLayout {
+                width: parent.width;
+                padding: 20px; spacing: 12px; alignment: start;
+                Text { text: root.heading; color: Theme.text; font-size: 18px * Theme.font-scale; font-weight: 700; }
+                @children
+            }
+        }
+    }
+}

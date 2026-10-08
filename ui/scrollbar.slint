@@ -1,0 +1,46 @@
+import { Theme } from "theme.slint";
+import { Glass } from "glass.slint";
+
+// Vertical scrollbar: a thin track with a draggable thumb, in the app's own look (no platform
+// style). `offset` is the Flickable's content-y (negative when scrolled).
+export component VScrollbar inherits Rectangle {
+    in property <length> content-h;
+    in property <length> view-h;
+    in-out property <length> offset;
+    width: 12px;
+    visible: root.content-h > root.view-h + 1px;
+    property <length> thumb-h: Math.max(28px, root.view-h * root.view-h / Math.max(1px, root.content-h));
+    property <length> travel: Math.max(1px, root.view-h - root.thumb-h);
+    property <length> scroll-max: Math.max(1px, root.content-h - root.view-h);
+    property <length> thumb-y: Math.min(root.travel, Math.max(0px, -root.offset / root.scroll-max * root.travel));
+    // an opaque panel fill (the table's own colour) under the tint: a background picture behind
+    // the list must not show through the track as a harsh strip
+    background: Theme.base;
+    Rectangle { background: Theme.scroll-track; }
+    Rectangle { x: 0px; width: 1px; background: Theme.border.with-alpha(0.6); }
+    if Theme.gloss > 0: Glass {
+        x: 2px; y: root.thumb-y; width: parent.width - 4px; height: root.thumb-h;
+        radius: 5px;
+        top: ta.pressed || ta.has-hover ? Theme.scroll-thumb-hover : Theme.scroll-thumb;
+        bottom: Theme.scroll-thumb;
+    }
+    if Theme.gloss <= 0: Rectangle {
+        x: 2px; y: root.thumb-y; width: parent.width - 4px; height: root.thumb-h;
+        border-radius: 4px;
+        background: ta.pressed || ta.has-hover ? Theme.scroll-thumb-hover : Theme.scroll-thumb;
+        border-width: 1px; border-color: Theme.border;
+    }
+    property <length> grab: 0px;
+    ta := TouchArea {
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) {
+                // grabbing the thumb keeps the point under the pointer; the track pages
+                if (self.mouse-y >= root.thumb-y && self.mouse-y <= root.thumb-y + root.thumb-h) { root.grab = self.mouse-y - root.thumb-y; }
+                else { root.grab = root.thumb-h / 2; root.offset = -Math.min(root.scroll-max, Math.max(0px, (self.mouse-y - root.grab) / root.travel * root.scroll-max)); }
+            }
+        }
+        moved => {
+            if (self.pressed) { root.offset = -Math.min(root.scroll-max, Math.max(0px, (self.mouse-y - root.grab) / root.travel * root.scroll-max)); }
+        }
+    }
+}

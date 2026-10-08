@@ -1,0 +1,53 @@
+import { Theme } from "theme.slint";
+import { Icon } from "icon.slint";
+import { Glass } from "glass.slint";
+
+// Labelled push button with the gradient face.
+export component Button inherits Rectangle {
+    in property <string> label;
+    in property <string> icon;
+    in property <bool> primary: false;
+    in property <bool> active: false;
+    in property <bool> enabled: true;
+    in property <length> font-size: 13px * Theme.font-scale;
+    in property <length> pad: 10px;
+    in property <length> min-w: 44px * Theme.font-scale;
+    callback clicked();
+    accessible-role: button;
+    accessible-label: root.label;
+    min-width: Math.max(root.min-w, content.preferred-width + 4px);
+    height: 26px * Theme.font-scale;
+    border-radius: Theme.gloss > 0 ? Theme.btn-radius : Theme.radius;
+    border-width: Theme.gloss > 0 ? 0px : 1px;
+    border-color: root.primary || root.active ? Theme.accent : Theme.border;
+    opacity: root.enabled ? 1.0 : 0.45;
+    // Classic draws its own face; the Aero skin draws a glass face instead
+    background: Theme.gloss > 0 ? transparent
+        : ta.pressed ? @linear-gradient(180deg, Theme.btn-bottom 0%, Theme.btn-top 100%)
+        : root.active ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%)
+        : ta.has-hover ? @linear-gradient(180deg, Theme.btn-hover-top 0%, Theme.btn-hover-bottom 100%)
+        : @linear-gradient(180deg, Theme.btn-top 0%, Theme.btn-bottom 100%);
+    if Theme.gloss > 0: Glass {
+        width: parent.width; height: parent.height;
+        top: ta.pressed ? Theme.btn-bottom : root.active ? Theme.sel-top : ta.has-hover ? Theme.btn-hover-top : Theme.btn-top;
+        bottom: ta.pressed ? Theme.btn-top : root.active ? Theme.sel-bottom : ta.has-hover ? Theme.btn-hover-bottom : Theme.btn-bottom;
+        edge: root.primary || root.active ? Theme.accent : Theme.border;
+    }
+    content := HorizontalLayout {
+        alignment: center;
+        spacing: 6px;
+        padding-left: root.pad; padding-right: root.pad;
+        if root.icon != "": Rectangle { width: 16px * Theme.font-scale; Icon { name: root.icon; size: 16px; y: (parent.height - self.height) / 2; } }
+        Text {
+            text: root.label;
+            font-size: root.font-size;
+            color: Theme.text;
+            font-weight: root.primary ? 700 : 400;
+            vertical-alignment: center;
+        }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        clicked => { root.clicked(); }
+    }
+}

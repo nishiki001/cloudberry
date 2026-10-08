@@ -1,0 +1,57 @@
+import { Theme } from "theme.slint";
+import { Button } from "button.slint";
+
+// Shared building blocks of the settings pages.
+export component Row inherits HorizontalLayout {
+    in property <string> name;
+    spacing: 6px * Theme.font-scale;
+    Text { text: root.name; color: Theme.text-dim; font-size: 13px * Theme.font-scale; width: 90px * Theme.font-scale; vertical-alignment: center; }
+    @children
+}
+
+// A group of exclusive buttons. The buttons share the row evenly and wrap onto further rows
+// when they would not fit (the width is estimated from the window, not from the layout, so the
+// height cannot depend on itself).
+export component Choice inherits Rectangle {
+    in property <string> name;
+    in property <[string]> labels;
+    in property <[string]> ids;
+    in property <string> current;
+    callback picked(string);
+    property <length> avail: Math.min(600px * Theme.font-scale, Theme.win-w - 32px) - 40px - 96px * Theme.font-scale;
+    property <int> n: root.labels.length;
+    property <int> cols: Math.max(1, Math.min(root.n, Math.floor((root.avail + 4px) / (84px * Theme.font-scale))));
+    property <int> rows: Math.ceil(root.n / root.cols);
+    property <length> cell-w: (root.avail - 4px * (root.cols - 1)) / root.cols;
+    height: root.rows * 28px * Theme.font-scale + (root.rows - 1) * 4px;
+    Text { x: 0px; y: 0px; text: root.name; color: Theme.text-dim; font-size: 13px * Theme.font-scale; width: 90px * Theme.font-scale; height: 26px * Theme.font-scale; vertical-alignment: center; }
+    for l[i] in root.labels: Button {
+        x: 96px * Theme.font-scale + Math.mod(i, root.cols) * (root.cell-w + 4px);
+        y: Math.floor(i / root.cols) * 32px * Theme.font-scale;
+        width: root.cell-w; height: 28px * Theme.font-scale;
+        label: l; active: root.current == root.ids[i];
+        clicked => { root.picked(root.ids[i]); }
+    }
+}
+
+// A row of page tabs that wraps onto further rows instead of running out of the dialog. Every
+// cell is as wide as the widest label (`widest`, measured in the current font).
+export component TabRow inherits Rectangle {
+    in property <[string]> labels;
+    in property <string> widest;
+    in property <int> current;
+    callback picked(int);
+    property <length> avail: Math.min(600px * Theme.font-scale, Theme.win-w - 32px) - 40px;
+    property <length> cell: probe.preferred-width + 28px;
+    property <int> cols: Math.max(1, Math.min(root.labels.length, Math.floor((root.avail + 4px) / (root.cell + 4px))));
+    property <int> rows: Math.ceil(root.labels.length / root.cols);
+    height: root.rows * 28px * Theme.font-scale + (root.rows - 1) * 4px;
+    probe := Text { visible: false; text: root.widest; font-size: 13px * Theme.font-scale; }
+    for l[i] in root.labels: Button {
+        x: Math.mod(i, root.cols) * (root.cell + 4px);
+        y: Math.floor(i / root.cols) * (28px * Theme.font-scale + 4px);
+        width: root.cell; height: 28px * Theme.font-scale;
+        label: l; active: root.current == i;
+        clicked => { root.picked(i); }
+    }
+}

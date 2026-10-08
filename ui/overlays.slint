@@ -1,0 +1,54 @@
+import { Theme } from "theme.slint";
+import { Dialogs } from "dialogs_state.slint";
+import { RenameDialog } from "rename_dialog.slint";
+import { SetupPanel } from "setup_panel.slint";
+import { SettingsPanel } from "settings_panel.slint";
+import { ColorPicker } from "widgets/color_picker.slint";
+import { MenuPanel } from "menu_panel.slint";
+import { Menus } from "menus_state.slint";
+import { AddPlaylist, NewPlaylistDialog, ExistingPlaylistDialog } from "add_playlist.slint";
+
+// Modal dialogs stacked over the window.
+export component Overlays inherits Rectangle {
+    /// Return keyboard focus to the main window.
+    callback focus-main();
+    // the window size, for popups that must stay on screen (this layer always fills the window)
+    changed width => { Theme.win-w = self.width; }
+    changed height => { Theme.win-h = self.height; }
+    init => { Theme.win-w = self.width; Theme.win-h = self.height; }
+    in property <string> analyzer-style;
+    in property <string> account;
+    if Dialogs.menu-demo == 1: MenuPanel { x: 420px; y: 180px; entries: Menus.row-menu; }
+    if Dialogs.menu-demo == 2: MenuPanel { x: 120px; y: 24px; entries: Menus.bar[2]; }
+    if Dialogs.picker-demo: ColorPicker { x: 330px; y: 140px; initial: "#E0457B"; }
+    if Dialogs.rename-visible: RenameDialog {
+        width: parent.width; height: parent.height;
+        text <=> Dialogs.rename-text;
+        heading-text: Dialogs.rename-heading; button-label: Dialogs.rename-button;
+        accepted(t) => { Dialogs.rename-visible = false; Dialogs.rename-accepted(t); }
+        cancelled => { Dialogs.rename-visible = false; root.focus-main(); }
+    }
+    if AddPlaylist.new-visible: NewPlaylistDialog { width: parent.width; height: parent.height; }
+    if AddPlaylist.existing-visible: ExistingPlaylistDialog { width: parent.width; height: parent.height; }
+    if Dialogs.setup-visible: SetupPanel {
+        width: parent.width; height: parent.height;
+        browser <=> Dialogs.setup-browser;
+        status: Dialogs.setup-status; busy: Dialogs.setup-busy;
+        run => { Dialogs.setup-run(Dialogs.setup-browser); }
+        skip => { Dialogs.setup-skip(); }
+        import-cookies => { Dialogs.import-cookies(); }
+    }
+    if Dialogs.settings-visible: SettingsPanel {
+        width: parent.width; height: parent.height;
+        page <=> Dialogs.settings-page;
+        account: root.account; analyzer-style: root.analyzer-style; spinning-disc: Dialogs.spinning-disc; disc-speed: Dialogs.disc-speed; backend: Dialogs.backend;
+        theme-mode: Theme.mode; reduce-motion: Theme.reduce-motion; quality: Dialogs.audio-quality;
+        browser: Dialogs.setup-browser; cache-size: Dialogs.cache-size; auth-status: Dialogs.setup-status;
+        set-theme(m) => { Dialogs.set-theme(m); }
+        set-reduce-motion(v) => { Dialogs.set-reduce-motion(v); }
+        set-quality(q) => { Dialogs.set-quality(q); }
+        signin(b) => { Dialogs.setup-browser = b; Dialogs.setup-run(b); }
+        clear-cache => { Dialogs.clear-cache(); }
+        close => { Dialogs.settings-visible = false; root.focus-main(); }
+    }
+}

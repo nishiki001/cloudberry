@@ -1,0 +1,35 @@
+import { Theme, Appearance } from "theme.slint";
+import { Dialogs } from "dialogs_state.slint";
+import { ColorField } from "widgets/color_field.slint";
+import { Row, Choice } from "form.slint";
+
+// Settings → Analyzer: style and colour scheme.
+export component AnalyzerPage inherits VerticalLayout {
+    in property <string> analyzer-style;
+    spacing: 10px;
+    Choice {
+        name: "Style";
+        labels: ["Block", "Bars", "Wave", "Curve", "Mirror", "Dots", "Off"];
+        ids: ["block", "bars", "wave", "curve", "mirror", "dots", "off"];
+        current: root.analyzer-style;
+        picked(id) => { Dialogs.set-analyzer(id); }
+    }
+    Choice {
+        name: "Colors";
+        labels: ["Accent", "Classic", "Ice", "Sunset", "Mono", "Custom"];
+        ids: ["accent", "classic", "ice", "sunset", "mono", "custom"];
+        current: Appearance.analyzer-scheme;
+        picked(id) => { Dialogs.set-analyzer("scheme-" + id); }
+    }
+    if Appearance.analyzer-scheme == "custom": Row {
+        name: "Gradient";
+        ColorField { value <=> Appearance.analyzer-c1; fallback: #2ECC71; placeholder: "bottom"; edited => { Appearance.analyzer-changed(); } }
+        ColorField { value <=> Appearance.analyzer-c2; fallback: #F1C40F; placeholder: "middle"; edited => { Appearance.analyzer-changed(); } }
+        ColorField { value <=> Appearance.analyzer-c3; fallback: #E74C3C; placeholder: "top"; edited => { Appearance.analyzer-changed(); } }
+    }
+    Row {
+        name: "Peak";
+        ColorField { width: 150px; value <=> Appearance.analyzer-peak; fallback: #E6F0F7; placeholder: "auto"; edited => { Appearance.analyzer-changed(); } }
+    }
+    Text { text: "Cells keep a constant size: a wider window shows more bands."; color: Theme.text-dim; font-size: 12px * Theme.font-scale; wrap: word-wrap; }
+}

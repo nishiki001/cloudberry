@@ -1,0 +1,45 @@
+import { Theme } from "theme.slint";
+import { MenuItemData } from "types.slint";
+import { ThemedMenu } from "themed_menu.slint";
+
+// One window-level host for the context menus of list delegates. A delegate can be recreated at
+// any time (scrolling, model updates); a popup owned by it would die with it. Delegates call
+// `ContextMenu.show(...)`, the host (in the window) shows the popup, and the choice comes back as
+// (owner, index, id) with a serial the delegates watch.
+export global ContextMenu {
+    in-out property <[MenuItemData]> entries;
+    in-out property <length> x;
+    in-out property <length> y;
+    in-out property <string> owner;
+    in-out property <int> index;
+    in-out property <int> serial: 0;
+    in-out property <string> picked-owner;
+    in-out property <int> picked-index;
+    in-out property <string> picked-id;
+    in-out property <int> picked-serial: 0;
+    /// Open the menu for `owner`'s item `index` at a window position.
+    public function show(owner: string, index: int, entries: [MenuItemData], x: length, y: length) {
+        ContextMenu.owner = owner;
+        ContextMenu.index = index;
+        ContextMenu.entries = entries;
+        ContextMenu.x = x;
+        ContextMenu.y = y;
+        ContextMenu.serial += 1;
+    }
+}
+
+export component ContextMenuHost inherits Rectangle {
+    width: 0px; height: 0px;
+    property <int> watch: ContextMenu.serial;
+    changed watch => { menu.open(ContextMenu.x, ContextMenu.y); }
+    menu := ThemedMenu {
+        reports-open: true;
+        entries: ContextMenu.entries;
+        activated(id) => {
+            ContextMenu.picked-owner = ContextMenu.owner;
+            ContextMenu.picked-index = ContextMenu.index;
+            ContextMenu.picked-id = id;
+            ContextMenu.picked-serial += 1;
+        }
+    }
+}

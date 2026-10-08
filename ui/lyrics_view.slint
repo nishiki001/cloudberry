@@ -1,0 +1,65 @@
+import { Theme } from "theme.slint";
+
+// Lyrics: the current line is bold and accent-coloured, the view follows it. The wheel scrolls
+// by hand; the view snaps back to the current line when it changes.
+export component LyricsView inherits Rectangle {
+    in property <[string]> lines;
+    in property <int> current: -1;
+    in property <bool> synced;
+    in property <string> status;
+    in property <string> source;
+
+    background: Theme.base;
+    clip: true;
+
+    property <length> row-h: 40px * Theme.font-scale;
+    property <length> area-h: root.height - 18px * Theme.font-scale;
+    property <length> max-scroll: Math.max(0px, root.row-h * root.lines.length - root.area-h);
+    // wheel offset on top of the automatic position; reset whenever the line changes
+    property <length> manual: 0px;
+    property <length> auto-y: root.synced && root.current >= 0
+        ? -Math.max(0px, root.row-h * root.current - (root.area-h - root.row-h) / 2) : 0px;
+    changed current => { root.manual = 0px; }
+    changed lines => { root.manual = 0px; }
+
+    Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: root.area-h;
+        clip: true;
+        list := VerticalLayout {
+        y: Math.min(0px, Math.max(-root.max-scroll, root.auto-y + root.manual));
+        animate y { duration: Theme.dur-med; easing: ease-in-out; }
+        for line[i] in root.lines: Rectangle {
+            height: root.row-h;
+            Text {
+                x: 8px; width: parent.width - 16px; height: parent.height;
+                wrap: word-wrap;
+                text: line == "" ? "♪" : line;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                color: !root.synced ? Theme.text : i == root.current ? Theme.accent-text : Theme.text-dim;
+                font-size: (i == root.current ? 14px : 13px) * Theme.font-scale;
+                font-weight: i == root.current ? 700 : 400;
+                font-family: Theme.lyrics-family;
+            }
+        }
+    }
+    }
+    TouchArea {
+        scroll-event(e) => {
+            root.manual += e.delta-y;
+            return accept;
+        }
+    }
+    if root.lines.length == 0: Text {
+        text: root.status;
+        color: Theme.text-dim;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    if root.lines.length > 0: Text {
+        y: parent.height - 16px * Theme.font-scale;
+        x: 8px;
+        text: root.source + (root.synced ? " · synced" : "");
+        color: Theme.text-dim;
+        font-size: 10px * Theme.font-scale;
+    }
+}

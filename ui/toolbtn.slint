@@ -1,0 +1,64 @@
+import { Theme } from "theme.slint";
+import { Icon } from "icon.slint";
+import { Glass } from "glass.slint";
+
+// Icon-only tool button. Flat until hovered; hover/press show the gradient (pressed = inverted);
+// `checked` tints it with the accent.
+export component ToolButton inherits Rectangle {
+    in property <string> icon;
+    in property <bool> checked: false;
+    in property <bool> enabled: true;
+    in property <length> icon-size: 18px;
+    in property <string> tip;
+    /// Show `tip` as a small label left of the button while hovered.
+    in property <bool> hover-tip: false;
+    /// Aero: a fully round orb (the main transport button) or a pill.
+    in property <bool> orb: false;
+    in property <bool> pill: false;
+    callback clicked();
+    callback right-clicked();
+    accessible-role: button;
+    accessible-label: root.tip != "" ? root.tip : root.icon;
+    width: Theme.tool-btn;
+    height: Theme.tool-btn;
+    border-radius: Theme.gloss > 0 && root.orb ? self.height / 2
+        : Theme.gloss > 0 && root.pill ? Math.min(self.height / 2, 12px) : Theme.gloss > 0 ? Theme.btn-radius : Theme.radius;
+    border-width: Theme.gloss > 0 ? 0px : ta.has-hover || root.checked ? 1px : 0px;
+    border-color: root.checked ? Theme.accent : Theme.border;
+    opacity: root.enabled ? 1.0 : 0.4;
+    background: !root.enabled ? transparent
+        : ta.pressed ? @linear-gradient(180deg, Theme.btn-bottom 0%, Theme.btn-top 100%)
+        : root.checked ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%)
+        : ta.has-hover ? @linear-gradient(180deg, Theme.btn-hover-top 0%, Theme.btn-hover-bottom 100%)
+        : transparent;
+    // Aero: always-visible glass face; checked/hover brighten and glow
+    if Theme.gloss > 0 && root.enabled: Glass {
+        width: parent.width; height: parent.height;
+        radius: parent.border-radius;
+        top: ta.pressed ? Theme.btn-bottom : root.checked ? Theme.sel-top : ta.has-hover ? Theme.btn-hover-top : Theme.btn-top;
+        bottom: ta.pressed ? Theme.btn-top : root.checked ? Theme.sel-bottom : ta.has-hover ? Theme.btn-hover-bottom : Theme.btn-bottom;
+        edge: root.checked ? Theme.accent : Theme.border;
+        gloss-scale: root.orb ? 1.15 : 1.0;
+    }
+    Icon {
+        name: root.icon;
+        size: root.icon-size;
+        tint: root.checked ? Theme.accent : Theme.text;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 + (ta.pressed ? 1px : 0px);
+    }
+    if root.hover-tip && root.tip != "" && ta.has-hover: Rectangle {
+        width: tip-text.preferred-width + 12px; height: 20px * Theme.font-scale;
+        x: -self.width - 4px; y: (parent.height - self.height) / 2;
+        background: Theme.base; border-width: 1px; border-color: Theme.border; border-radius: 3px;
+        tip-text := Text { text: root.tip; color: Theme.text; font-size: 12px * Theme.font-scale; x: 6px; vertical-alignment: center; height: parent.height; }
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: pointer;
+        clicked => { root.clicked(); }
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up) { root.right-clicked(); }
+        }
+    }
+}

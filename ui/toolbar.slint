@@ -1,0 +1,81 @@
+import { Theme } from "theme.slint";
+import { ToolButton } from "toolbtn.slint";
+import { Icon } from "icon.slint";
+import { HSlider } from "hslider.slint";
+import { Analyzer } from "analyzer.slint";
+import { AddToPlaylistButton } from "add_button.slint";
+import { Sheen } from "sheen.slint";
+
+// Transport · analyzer (fills the free space) · volume · shuffle/repeat.
+export component Toolbar inherits Rectangle {
+    in property <bool> playing;
+    in property <image> analyzer-frame;
+    in property <string> analyzer-style: "block";
+    in property <int> analyzer-fps: 30;
+    in-out property <float> volume: 0.7;
+    in property <bool> shuffle;
+    in property <string> repeat-mode: "off";
+    callback toggle-play();
+    callback prev();
+    callback next();
+    callback stop();
+    callback set-volume(float);
+    callback toggle-shuffle();
+    callback cycle-repeat();
+    in property <bool> has-track: true;
+    callback add-to-playlist(string);
+    callback analyzer-menu(string);
+    callback analyzer-resized(int, int);
+    height: 44px * Theme.font-scale;
+    background: @linear-gradient(180deg, Theme.tool-top 0%, Theme.tool-bottom 100%);
+
+    Sheen { strength: 0.7; }
+    HorizontalLayout {
+        padding-left: 8px; padding-right: 8px; padding-top: 5px; padding-bottom: 5px; spacing: 4px;
+        // every control sits on the toolbar's centre line (layout items would hug the top)
+        Rectangle { width: Theme.tool-btn; ToolButton { y: (parent.height - self.height) / 2; pill: true; icon: "prev"; clicked => { root.prev(); } } }
+        Rectangle {
+            width: 36px * Theme.font-scale;
+            ToolButton {
+                icon: root.playing ? "pause" : "play";
+                icon-size: 22px;
+                width: 36px * Theme.font-scale; height: 36px * Theme.font-scale; y: (parent.height - self.height) / 2;
+                clicked => { root.toggle-play(); }
+            }
+        }
+        Rectangle { width: Theme.tool-btn; ToolButton { y: (parent.height - self.height) / 2; pill: true; icon: "stop"; icon-size: 16px; clicked => { root.stop(); } } }
+        Rectangle { width: Theme.tool-btn; ToolButton { y: (parent.height - self.height) / 2; pill: true; icon: "next"; clicked => { root.next(); } } }
+        Rectangle { width: 6px; }
+        Analyzer {
+            horizontal-stretch: 1;
+            frame: root.analyzer-frame; style: root.analyzer-style; fps: root.analyzer-fps;
+            menu(m) => { root.analyzer-menu(m); }
+            resized(w, h) => { root.analyzer-resized(w, h); }
+        }
+        if root.analyzer-style == "off": Rectangle { horizontal-stretch: 1; }
+        Rectangle { width: 6px; }
+        Rectangle {
+            width: 18px * Theme.font-scale;
+            Icon {
+                name: root.volume < 0.01 ? "mute" : root.volume < 0.5 ? "volume-low" : "volume";
+                size: 18px; y: (parent.height - self.height) / 2;
+            }
+        }
+        Rectangle {
+            width: 110px;
+            HSlider {
+                width: parent.width; y: (parent.height - self.height) / 2;
+                value <=> root.volume;
+                changed(v) => { root.set-volume(v); }
+            }
+        }
+        Rectangle { width: 6px; }
+        Rectangle {
+            width: Theme.tool-btn;
+            AddToPlaylistButton { y: (parent.height - self.height) / 2; pill: true; enabled: root.has-track; chosen(id) => { root.add-to-playlist(id); } }
+        }
+        Rectangle { width: Theme.tool-btn; ToolButton { y: (parent.height - self.height) / 2; icon: "shuffle"; checked: root.shuffle; clicked => { root.toggle-shuffle(); } } }
+        Rectangle { width: Theme.tool-btn; ToolButton { y: (parent.height - self.height) / 2; icon: root.repeat-mode == "one" ? "repeat-one" : "repeat"; checked: root.repeat-mode != "off"; clicked => { root.cycle-repeat(); } } }
+    }
+    Rectangle { x: 0px; y: parent.height - 1px; height: 1px; background: Theme.border; }
+}

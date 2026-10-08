@@ -1,0 +1,59 @@
+// State and callbacks of the modal dialogs (rename, sign-in, settings). A global keeps them out
+// of the window's root properties; Rust reaches them with `ui.global::<Dialogs>()`.
+export global Dialogs {
+    in-out property <bool> setup-visible;
+    in-out property <string> setup-browser: "firefox";
+    in property <string> setup-status;
+    in property <bool> setup-busy;
+    in-out property <bool> settings-visible;
+    in-out property <int> settings-page: 0;
+    in property <int> audio-quality;
+    in property <string> cache-size;
+    in property <string> backend: "native";
+    /// This build contains the mpv engine (cargo feature `mpv`).
+    in property <bool> mpv-available: false;
+    /// The saved choice (the renderer is picked at startup, so it applies after a restart).
+    in property <bool> spinning-disc;
+    /// Screenshot fixture: show a colour picker panel in the window.
+    in property <bool> picker-demo;
+    /// Screenshot fixture: 1 = the row menu, 2 = a menu bar dropdown, shown open.
+    in property <int> menu-demo;
+    in-out property <bool> rename-visible;
+    in-out property <string> rename-text;
+    in property <string> rename-heading: "Rename playlist";
+    in property <string> rename-button: "Rename";
+    /// Status bar action next to the message ("Undo", "Add anyway"); empty = none.
+    in property <string> status-action;
+    callback status-action-clicked();
+    callback setup-run(string);
+    callback setup-skip();
+    /// "Import cookies.txt…": pick a file (portal file chooser), keep the YouTube/Google lines.
+    callback import-cookies();
+    callback set-quality(int);
+    callback set-reduce-motion(bool);
+    callback set-theme(int);
+    callback set-skin(string);
+    /// Font families to choose from (index 0 = "System default").
+    in-out property <[string]> fonts: ["System default"];
+    in property <string> font-family;
+    in property <string> lyrics-font;
+    in property <string> font-size: "13";
+    callback set-font(string, string);
+    callback set-font-size(string);
+    callback set-icon-set(string);
+    callback clear-cache();
+    callback set-analyzer(string);
+    callback set-spinning-disc(bool);
+    in property <string> disc-speed: "normal";
+    callback set-disc-speed(string);
+    callback set-backend(string);
+    /// Helper tools (yt-dlp, deno): versions line, "managed" | "system", update progress text.
+    in property <string> tools-status;
+    in property <string> tools-source: "managed";
+    in property <bool> tools-busy;
+    in property <bool> tools-locked;
+    callback set-tools-source(string);
+    callback update-tools();
+    callback settings-opened();
+    callback rename-accepted(string);
+}

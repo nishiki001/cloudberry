@@ -1,0 +1,89 @@
+import { GradBox } from "gradbox.slint";
+import { Theme } from "theme.slint";
+import { Glass } from "glass.slint";
+
+// Horizontal slider (seek and volume): sunken groove, accent fill, buffered range, small
+// gradient handle. `released` fires once when the user lets go.
+export component HSlider inherits Rectangle {
+    in-out property <float> value: 0; // 0..1
+    in property <float> buffered: 0; // 0..1
+    in-out property <bool> dragging: false;
+    in property <bool> enabled: true;
+    callback changed(float);
+    callback released(float);
+    height: 20px;
+    min-width: 40px;
+    opacity: root.enabled ? 1.0 : 0.5;
+
+    property <length> handle-w: Theme.tube ? 14px : 10px;
+    property <length> groove-h: 6px;
+    property <bool> lit: ta.has-hover || root.dragging;
+    property <length> travel: root.width - handle-w;
+
+    Rectangle { // groove
+        y: (parent.height - self.height) / 2;
+        height: root.groove-h;
+        border-radius: self.height / 2;
+        background: Theme.tube ? @linear-gradient(180deg, Theme.analyzer-bg.darker(0.15) 0%, Theme.analyzer-bg.brighter(0.1) 100%) : Theme.analyzer-bg;
+        border-width: 1px;
+        border-color: Theme.tube && root.lit ? Theme.accent.with-alpha(0.7) : Theme.border;
+        Rectangle { // buffered
+            x: 0; width: parent.width * clamp(root.buffered, 0, 1);
+            border-radius: parent.border-radius;
+            background: Theme.accent.with-alpha(0.25);
+        }
+        Rectangle { // played
+            x: 0; width: parent.width * clamp(root.value, 0, 1);
+            border-radius: parent.border-radius;
+            background: @linear-gradient(180deg, Theme.accent.brighter(0.2) 0%, Theme.accent 100%);
+            if Theme.tube: Rectangle { // liquid highlight stripe
+                x: 3px; y: 1px; width: Math.max(0px, parent.width - 6px); height: 1.5px; border-radius: 0.75px;
+                background: #FFFFFF.with-alpha(0.55);
+            }
+        }
+    }
+    if Theme.tube && root.lit: Rectangle { // soft glow around the bead
+        x: root.travel * clamp(root.value, 0, 1) - 3px;
+        y: (parent.height - self.height) / 2;
+        width: root.handle-w + 6px; height: root.handle-w + 6px;
+        border-radius: self.height / 2;
+        background: Theme.accent.with-alpha(root.dragging ? 0.38 : 0.26);
+    }
+    if Theme.tube: Glass { // small glass bead
+        x: root.travel * clamp(root.value, 0, 1);
+        y: (parent.height - self.height) / 2;
+        width: root.handle-w; height: root.handle-w;
+        radius: self.height / 2;
+        top: ta.pressed ? Theme.btn-bottom : Theme.btn-hover-top;
+        bottom: ta.pressed ? Theme.btn-top : Theme.btn-bottom;
+        edge: root.lit ? Theme.accent : Theme.border;
+    }
+    if Theme.tube: Rectangle { // specular highlight of the bead
+        x: root.travel * clamp(root.value, 0, 1) + root.handle-w * 0.24;
+        y: (parent.height - root.handle-w) / 2 + root.handle-w * 0.12;
+        width: root.handle-w * 0.5; height: root.handle-w * 0.28;
+        border-radius: self.height / 2;
+        background: #FFFFFF.with-alpha(0.85);
+    }
+    if !Theme.tube: GradBox {
+        x: root.travel * clamp(root.value, 0, 1);
+        y: (parent.height - self.height) / 2;
+        width: root.handle-w; height: 16px;
+        top: ta.pressed ? Theme.btn-bottom : Theme.btn-hover-top;
+        bottom: ta.pressed ? Theme.btn-top : Theme.btn-bottom;
+        border-radius: 2px;
+    }
+    ta := TouchArea {
+        enabled: root.enabled;
+        function pick() {
+            root.value = clamp((self.mouse-x - root.handle-w / 2) / root.travel, 0, 1);
+            root.changed(root.value);
+        }
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.cancel) { root.dragging = false; }
+            if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) { root.dragging = true; self.pick(); }
+            if (e.button == PointerEventButton.left && e.kind == PointerEventKind.up) { root.dragging = false; root.released(root.value); }
+        }
+        moved => { if (self.pressed) { self.pick(); } }
+    }
+}

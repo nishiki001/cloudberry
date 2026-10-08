@@ -1,0 +1,23 @@
+import { Theme } from "theme.slint";
+
+// Draggable vertical divider; `pos` is the width of the pane on its left.
+export component Splitter inherits Rectangle {
+    in-out property <length> pos: 280px;
+    in property <length> min-pos: 200px;
+    in property <length> max-pos: 520px;
+    width: Theme.gap;
+    background: ta.has-hover || ta.pressed ? Theme.accent.with-alpha(0.35) : Theme.window;
+    property <length> start: 0px;
+    Rectangle { x: (parent.width - 1px) / 2; width: 1px; background: Theme.border; }
+    ta := TouchArea {
+        mouse-cursor: col-resize;
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) { root.start = root.pos; }
+        }
+        moved => {
+            if (self.pressed) {
+                root.pos = clamp(root.start + (self.mouse-x - self.pressed-x), root.min-pos, root.max-pos);
+            }
+        }
+    }
+}

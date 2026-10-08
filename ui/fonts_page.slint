@@ -1,0 +1,52 @@
+import { Theme } from "theme.slint";
+import { Dialogs } from "dialogs_state.slint";
+import { Button } from "button.slint";
+import { ScrollList } from "scroll_list.slint";
+import { Row, Choice } from "form.slint";
+import "../assets/fonts/AtkinsonHyperlegible-Regular.ttf";
+import "../assets/fonts/AtkinsonHyperlegible-Bold.ttf";
+
+// Settings → Fonts: UI / lyrics font from the installed and bundled families, size, live preview.
+export component FontsPage inherits VerticalLayout {
+    in-out property <string> target: "ui";
+    spacing: 10px;
+    Choice {
+        name: "Font for";
+        labels: ["Interface", "Lyrics"];
+        ids: ["ui", "lyrics"];
+        current: root.target;
+        picked(id) => { root.target = id; }
+    }
+    Choice {
+        name: "Size";
+        labels: ["Small", "Default", "Large", "Huge"];
+        ids: ["12", "13", "15", "17"];
+        current: Dialogs.font-size;
+        picked(id) => { Dialogs.set-font-size(id); }
+    }
+    list := ScrollList {
+        height: 140px;
+        row-h: 24px;
+        count: Dialogs.fonts.length;
+        Rectangle { width: parent.width; height: 140px; background: Theme.window; } // keeps the viewport's background
+        for k in list.shown: row := Rectangle {
+            property <int> idx: list.first + k;
+            property <string> fam: Dialogs.fonts[self.idx];
+            y: self.idx * 24px; width: parent.width - 12px; height: 24px;
+            property <bool> sel: (root.target == "ui" ? Dialogs.font-family : Dialogs.lyrics-font) == (self.idx == 0 ? "" : self.fam);
+            background: self.sel ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%) : ta.has-hover ? Theme.bevel.with-alpha(0.15) : transparent;
+            Text { x: 8px; width: parent.width - 16px; text: row.fam; overflow: elide; vertical-alignment: center; color: Theme.text; font-size: 13px * Theme.font-scale; font-family: row.idx == 0 ? "" : row.fam; }
+            ta := TouchArea { clicked => { Dialogs.set-font(root.target, row.idx == 0 ? "" : row.fam); } }
+        }
+    }
+    Rectangle {
+        height: pv.preferred-height + 16px;
+        background: Theme.base; border-width: 1px; border-color: Theme.border; border-radius: 3px;
+        pv := VerticalLayout {
+            padding: 8px; spacing: 2px;
+            Text { text: "Interface — The quick brown fox 0123456789"; color: Theme.text; font-size: 13px * Theme.font-scale; overflow: elide; }
+            Text { text: "日本語のサンプル · Образец текста"; color: Theme.text; font-size: 13px * Theme.font-scale; overflow: elide; }
+            Text { text: "Lyrics — A line in the lyrics font 日本語 Русский"; color: Theme.accent-text; font-family: Theme.lyrics-family; font-size: 14px * Theme.font-scale; font-weight: 700; overflow: elide; }
+        }
+    }
+}

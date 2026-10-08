@@ -1,0 +1,66 @@
+import { Theme, Art } from "theme.slint";
+
+// The signature CD. Art spins; the rainbow sheen stays fixed. `Theme.disc-angle` is eased in/out
+// by the frame tick in Rust and does not change at rest (no redraws when paused).
+export component Disc inherits Rectangle {
+    in property <image> art;
+    in property <bool> has-cover: false;
+    in property <length> size: 200px;
+
+    width: size; height: size;
+    // the angle is advanced by the analyzer's frame tick (Rust): one clock for every disc and
+    // the analyzer, so a frame of the GL renderer is never drawn twice for two timers.
+
+    // outer silver rim (solid fills so every renderer draws the same circle)
+    Rectangle {
+        border-radius: root.size / 2;
+        background: Theme.btn-bottom;
+        border-width: 1px;
+        border-color: Theme.border;
+        drop-shadow-color: Theme.shadow;
+        drop-shadow-blur: 8px;
+        drop-shadow-offset-y: 2px;
+    }
+
+    // art: already circular (alpha-masked in Rust), so it can spin freely
+    Image {
+        x: 4px; y: 4px;
+        width: root.size - 8px; height: root.size - 8px;
+        source: root.has-cover ? root.art : Art.blank-disc;
+        transform-rotation: root.has-cover ? Theme.disc-angle : 0deg;
+    }
+
+    // faint inner data-ring edge
+    Rectangle {
+        width: root.size * 0.42; height: self.width;
+        x: (root.size - self.width) / 2; y: self.x;
+        border-radius: self.width / 2;
+        border-width: 1px;
+        border-color: Theme.border.with-alpha(0.5);
+    }
+
+    // fixed rainbow sheen (does not rotate)
+    Image {
+        x: 4px; y: 4px;
+        width: root.size - 8px; height: root.size - 8px;
+        source: Art.sheen;
+    }
+
+    // clear plastic hub ring + center hole
+    Rectangle {
+        width: root.size * 0.3; height: self.width;
+        x: (root.size - self.width) / 2; y: self.x;
+        border-radius: self.width / 2;
+        background: Theme.bevel.with-alpha(0.5);
+        border-width: 1px;
+        border-color: Theme.bevel;
+        Rectangle {
+            width: parent.width * 0.5; height: self.width;
+            x: (parent.width - self.width) / 2; y: self.x;
+            border-radius: self.width / 2;
+            background: Theme.window;
+            border-width: 1px;
+            border-color: Theme.border;
+        }
+    }
+}

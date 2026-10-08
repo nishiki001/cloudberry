@@ -1,0 +1,36 @@
+import { Theme } from "theme.slint";
+
+// Single-line text field; `edited` fires on every keystroke.
+export component TextField inherits Rectangle {
+    in-out property <string> text <=> input.text;
+    in property <string> placeholder;
+    in property <color> swatch: transparent;
+    in property <string> label;
+    callback edited(string);
+    callback accepted(string);
+    height: 24px;
+    border-radius: Theme.radius;
+    border-width: 1px;
+    border-color: input.has-focus ? Theme.accent : Theme.border;
+    background: Theme.base;
+    if root.swatch != transparent: Rectangle {
+        x: parent.width - 20px; y: 5px; width: 14px; height: 14px;
+        background: root.swatch; border-width: 1px; border-color: Theme.border; border-radius: 2px;
+    }
+    input := TextInput {
+        x: 6px; width: parent.width - (root.swatch != transparent ? 30px : 12px);
+        vertical-alignment: center;
+        color: Theme.text;
+        font-size: 12px * Theme.font-scale;
+        single-line: true;
+        selection-background-color: Theme.selection;
+        selection-foreground-color: Theme.text;
+        accessible-label: root.label;
+        edited => { root.edited(self.text); }
+        accepted => { root.accepted(self.text); }
+    }
+    if input.text == "" && !input.has-focus: Text {
+        x: 6px; text: root.placeholder; color: Theme.text-dim; font-size: 12px * Theme.font-scale;
+        vertical-alignment: center; height: parent.height;
+    }
+}

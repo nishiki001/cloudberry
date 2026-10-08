@@ -1,0 +1,25 @@
+import { Theme } from "theme.slint";
+import { VScrollbar } from "scrollbar.slint";
+
+// A scrolling list of fixed-height rows with only the visible rows instantiated (windowing in
+// plain Slint: the caller repeats `for k in list.shown` and shows row `list.first + k` at
+// `y: (list.first + k) * row-h`). Replaces the platform-style ListView.
+export component ScrollList inherits Rectangle {
+    in property <length> row-h: 24px;
+    in property <int> count: 0;
+    in-out property <length> content-y <=> flick.content-y;
+    out property <int> first: Math.max(0, Math.min(root.count - 1, Math.floor(-flick.content-y / root.row-h)));
+    out property <int> shown: Math.max(0, Math.min(root.count - root.first, Math.ceil(root.height / root.row-h) + 2));
+    clip: true;
+    flick := Flickable {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+        content-width: self.width;
+        content-height: root.count * root.row-h;
+        @children
+    }
+    VScrollbar {
+        x: parent.width - self.width; y: 0px; height: parent.height;
+        content-h: root.count * root.row-h; view-h: root.height;
+        offset <=> flick.content-y;
+    }
+}

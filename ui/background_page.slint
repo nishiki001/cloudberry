@@ -1,0 +1,67 @@
+import { Button } from "button.slint";
+import { Theme, Appearance } from "theme.slint";
+import { HSlider } from "hslider.slint";
+import { TextField } from "textfield.slint";
+import { ColorField } from "widgets/color_field.slint";
+import { Row, Choice } from "form.slint";
+
+// Settings → Background: the picture behind the playlist table.
+export component BackgroundPage inherits VerticalLayout {
+    spacing: 10px;
+    Choice {
+        name: "Background";
+        labels: ["None", "Pattern", "Cover", "Image"];
+        ids: ["none", "pattern", "cover", "image"];
+        current: Appearance.bg-mode;
+        picked(id) => { Appearance.bg-mode = id; Appearance.changed(); }
+    }
+    if Appearance.bg-mode == "image": Row {
+        name: "Picture";
+        Rectangle {
+            width: 56px; height: 40px; border-width: 1px; border-color: Theme.border; background: Theme.analyzer-bg; clip: true;
+            if Appearance.bg-has-preview: Image { source: Appearance.bg-preview; width: parent.width; height: parent.height; image-fit: cover; }
+        }
+        Text { text: Appearance.bg-name != "" ? Appearance.bg-name : "no picture chosen"; color: Appearance.bg-name != "" ? Theme.text : Theme.text-dim; overflow: elide; vertical-alignment: center; horizontal-stretch: 1; min-width: 0px; }
+        Button { label: "Browse…"; clicked => { Appearance.browse-bg(); } }
+        Button { label: "Clear"; enabled: Appearance.bg-path != ""; clicked => { Appearance.clear-bg(); } }
+    }
+    if Appearance.bg-mode == "image" && Appearance.bg-error != "": Text {
+        text: Appearance.bg-error; color: Theme.error; font-size: 12px * Theme.font-scale; wrap: word-wrap;
+    }
+    if Appearance.bg-mode == "image" || Appearance.bg-mode == "cover": Choice {
+        name: "Fit";
+        labels: ["Cover", "Contain", "Stretch"];
+        ids: ["cover", "contain", "stretch"];
+        current: Appearance.bg-fit;
+        picked(id) => { Appearance.bg-fit = id; Appearance.changed(); }
+    }
+    if Appearance.bg-mode == "image" || Appearance.bg-mode == "cover": Row {
+        name: "Anchor";
+        VerticalLayout {
+            spacing: 2px;
+            for row[r] in [0, 1, 2]: HorizontalLayout {
+                spacing: 2px;
+                for col[c] in [0, 1, 2]: Rectangle {
+                    property <string> id: [["top-left", "top", "top-right"], ["left", "center", "right"], ["bottom-left", "bottom", "bottom-right"]][r][c];
+                    width: 26px; height: 22px; border-radius: 3px; border-width: 1px;
+                    border-color: Appearance.bg-pos == self.id ? Theme.accent : Theme.border;
+                    background: Appearance.bg-pos == self.id ? Theme.accent : Theme.btn-top;
+                    TouchArea { clicked => { Appearance.bg-pos = parent.id; Appearance.changed(); } mouse-cursor: pointer; }
+                }
+            }
+        }
+    }
+    if Appearance.bg-mode != "none": Row {
+        name: "Opacity";
+        HSlider { value <=> Appearance.bg-opacity; changed(v) => { Appearance.changed(); } }
+    }
+    if Appearance.bg-mode == "image" || Appearance.bg-mode == "cover": Row {
+        name: "Blur";
+        HSlider { value <=> Appearance.bg-blur; changed(v) => { Appearance.changed(); } }
+    }
+    if Appearance.bg-mode != "none": Row {
+        name: "Tint";
+        HSlider { value <=> Appearance.bg-tint; changed(v) => { Appearance.changed(); } }
+        ColorField { width: 130px; value <=> Appearance.bg-tint-color; fallback: Theme.base; placeholder: "theme"; edited => { Appearance.changed(); } }
+    }
+}

@@ -1,0 +1,114 @@
+import { Theme } from "theme.slint";
+import { Modal } from "modal.slint";
+import { Button } from "button.slint";
+import { TextField } from "textfield.slint";
+import { ScrollList } from "scroll_list.slint";
+import { Icon } from "icon.slint";
+
+export struct PlaylistChoice {
+    id: string,
+    title: string,
+    detail: string,
+    thumb: image,
+    has-thumb: bool,
+}
+
+// State of the two "Add to playlist" dialogs (see gui/playlist_add.rs).
+export global AddPlaylist {
+    in-out property <bool> new-visible;
+    in-out property <bool> existing-visible;
+    in-out property <string> new-name;
+    in-out property <string> privacy: "PRIVATE";
+    in-out property <string> filter;
+    in property <bool> loading;
+    in property <int> count: 1;
+    in property <[PlaylistChoice]> rows;
+    callback create(string, string);
+    callback add(string);
+    callback filter-changed(string);
+    callback cancel();
+}
+
+// "New playlist…": a name and who can see it.
+export component NewPlaylistDialog inherits Modal {
+    heading: "New playlist";
+    panel-width: 400px;
+    TextField {
+        text <=> AddPlaylist.new-name;
+        placeholder: "Playlist name";
+        height: 28px * Theme.font-scale;
+        label: "Playlist name";
+        accepted => { AddPlaylist.create(AddPlaylist.new-name, AddPlaylist.privacy); }
+    }
+    HorizontalLayout {
+        spacing: 6px;
+        for p[i] in [{ id: "PRIVATE", label: "Private" }, { id: "UNLISTED", label: "Unlisted" }, { id: "PUBLIC", label: "Public" }]: Button {
+            label: p.label; active: AddPlaylist.privacy == p.id;
+            clicked => { AddPlaylist.privacy = p.id; }
+        }
+    }
+    HorizontalLayout {
+        spacing: 8px; alignment: end;
+        Button { label: "Cancel"; clicked => { AddPlaylist.cancel(); } }
+        Button { label: "Create"; primary: true; enabled: AddPlaylist.new-name != ""; clicked => { AddPlaylist.create(AddPlaylist.new-name, AddPlaylist.privacy); } }
+    }
+}
+
+// "Existing playlist…": own playlists with cover, track count and a filter box.
+export component ExistingPlaylistDialog inherits Modal {
+    heading: AddPlaylist.count == 1 ? "Add to playlist" : "Add " + AddPlaylist.count + " tracks to playlist";
+    panel-width: 460px;
+    property <int> selected: -1;
+    property <length> row-h: 48px * Theme.font-scale;
+    TextField {
+        text <=> AddPlaylist.filter;
+        placeholder: "Filter playlists";
+        height: 28px * Theme.font-scale;
+        label: "Filter playlists";
+        edited(t) => { root.selected = -1; AddPlaylist.filter-changed(t); }
+    }
+    Rectangle {
+        height: 5 * root.row-h;
+        border-width: 1px; border-color: Theme.border; background: Theme.base;
+        list := ScrollList {
+            row-h: root.row-h; count: AddPlaylist.rows.length;
+            for k in list.shown: Rectangle {
+                property <int> i: list.first + k;
+                property <PlaylistChoice> r: AddPlaylist.rows[i];
+                visible: i < AddPlaylist.rows.length;
+                x: 0px; y: i * root.row-h; width: list.width - 12px; height: root.row-h;
+                background: i == root.selected ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%) : ta.has-hover ? Theme.selection.with-alpha(0.5) : transparent;
+                Rectangle {
+                    x: 8px; y: (parent.height - self.height) / 2; width: 36px * Theme.font-scale; height: self.width;
+                    background: Theme.analyzer-bg; border-width: 1px; border-color: Theme.border; clip: true;
+                    if r.has-thumb: Image { source: r.thumb; width: parent.width; height: parent.height; image-fit: cover; }
+                    if !r.has-thumb: Icon { name: "lists"; size: 18px; tint: Theme.text-dim; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+                }
+                VerticalLayout {
+                    x: 8px + 36px * Theme.font-scale + 10px; width: parent.width - self.x - 8px;
+                    alignment: center;
+                    Text { text: r.title; color: Theme.text; overflow: elide; }
+                    Text { text: r.detail; color: Theme.text-dim; font-size: 11px * Theme.font-scale; overflow: elide; }
+                }
+                ta := TouchArea {
+                    accessible-role: list-item;
+                    accessible-label: r.title;
+                    accessible-item-selectable: true;
+                    accessible-item-selected: i == root.selected;
+                    clicked => { root.selected = i; }
+                    double-clicked => { AddPlaylist.add(r.id); }
+                }
+            }
+        }
+        if AddPlaylist.loading: Text { text: "Loading your playlists…"; color: Theme.text-dim; horizontal-alignment: center; vertical-alignment: center; }
+        if !AddPlaylist.loading && AddPlaylist.rows.length == 0: Text { text: "No playlists found"; color: Theme.text-dim; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    HorizontalLayout {
+        spacing: 8px; alignment: end;
+        Button { label: "Cancel"; clicked => { AddPlaylist.cancel(); } }
+        Button {
+            label: "Add"; primary: true; enabled: root.selected >= 0 && root.selected < AddPlaylist.rows.length;
+            clicked => { AddPlaylist.add(AddPlaylist.rows[root.selected].id); }
+        }
+    }
+}

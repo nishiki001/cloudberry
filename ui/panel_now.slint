@@ -1,0 +1,80 @@
+import { Theme } from "theme.slint";
+import { Icon } from "icon.slint";
+import { Disc } from "disc.slint";
+import { ContextMenu } from "context_menu.slint";
+import { Menus } from "menus_state.slint";
+import { LyricsView } from "lyrics_view.slint";
+
+// "Now" tab: large cover, metadata, then the synced lyrics.
+export component PanelNow inherits Rectangle {
+    in property <image> art;
+    in property <image> art-flat;
+    in property <bool> has-cover;
+    in property <bool> playing;
+    in property <string> title;
+    in property <string> artist;
+    in property <string> album;
+    in property <[string]> lyrics;
+    in property <int> lyrics-current: -1;
+    in property <bool> lyrics-synced;
+    in property <string> lyrics-status;
+    in property <string> lyrics-source;
+    callback open-artist();
+    callback open-album();
+    callback more-like-this();
+    /// Choice from the shared track menu for the playing song (right click anywhere on the panel).
+    callback context(string);
+    property <int> picked: ContextMenu.picked-serial;
+    changed picked => { if (ContextMenu.picked-owner == "now") { root.context(ContextMenu.picked-id); } }
+    // below everything else: buttons and links keep their clicks
+    TouchArea {
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up && root.has-track) {
+                ContextMenu.show("now", 0, Menus.track-items(true, false, []), self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            }
+        }
+    }
+    in property <bool> has-track: true;
+    /// Width available to the panel, passed in by the window (avoids a layout loop).
+    in property <length> avail-w: 230px;
+    background: Theme.base;
+
+    property <length> cover-size: Math.max(120px, Math.min(root.avail-w - 20px, 220px));
+    VerticalLayout {
+        padding: 10px; spacing: 8px;
+        Rectangle {
+            height: root.cover-size; width: root.cover-size;
+            if Theme.spinning-disc: Disc { size: root.cover-size; art: root.art; has-cover: root.has-cover; }
+            if !Theme.spinning-disc: Rectangle {
+                background: Theme.analyzer-bg; border-width: 1px; border-color: Theme.border;
+                if root.has-cover: Image { source: root.art-flat; x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px; image-fit: cover; }
+                if !root.has-cover: Icon { name: "music"; size: 56px; tint: Theme.text-dim; x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2; }
+            }
+        }
+        VerticalLayout {
+            spacing: 2px; vertical-stretch: 0; alignment: start;
+            Text { width: parent.width; text: root.title; color: Theme.text; font-weight: 700; font-size: 14px * Theme.font-scale; overflow: elide; }
+            Rectangle {
+                height: 18px * Theme.font-scale;
+                Text { width: parent.width; text: root.artist; color: artist-ta.has-hover ? Theme.accent-text : Theme.text; overflow: elide; }
+                artist-ta := TouchArea { mouse-cursor: pointer; clicked => { root.open-artist(); } }
+            }
+            Rectangle {
+                height: 16px * Theme.font-scale;
+                Text { width: parent.width; text: root.album; color: album-ta.has-hover ? Theme.accent-text : Theme.text-dim; font-size: 12px * Theme.font-scale; overflow: elide; }
+                album-ta := TouchArea { mouse-cursor: pointer; clicked => { root.open-album(); } }
+            }
+            if root.has-track: Rectangle {
+                height: 20px * Theme.font-scale;
+                Icon { name: "now"; size: 14px; tint: more-ta.has-hover ? Theme.accent-text : Theme.text-dim; x: 0px; y: 3px * Theme.font-scale; }
+                Text { x: 20px * Theme.font-scale; width: parent.width - 20px * Theme.font-scale; text: "More like this"; color: more-ta.has-hover ? Theme.accent-text : Theme.text-dim; font-size: 12px * Theme.font-scale; overflow: elide; vertical-alignment: center; }
+                more-ta := TouchArea { mouse-cursor: pointer; clicked => { root.more-like-this(); } }
+            }
+        }
+        lyr := LyricsView {
+            vertical-stretch: 1;
+            lines: root.lyrics; current: root.lyrics-current; synced: root.lyrics-synced;
+            status: root.lyrics-status; source: root.lyrics-source;
+        }
+    }
+}

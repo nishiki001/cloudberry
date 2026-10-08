@@ -1,0 +1,42 @@
+import { Theme } from "theme.slint";
+import { ToolButton } from "toolbtn.slint";
+import { HSlider } from "hslider.slint";
+import { Sheen } from "sheen.slint";
+import { Icon } from "icon.slint";
+import { MenuPanel } from "menu_panel.slint";
+
+// Live preview in Settings → Appearance: a mini toolbar, a few table rows and a menu, drawn with
+// the real components so the current skin, icon set, colours and font show at once.
+export component AppearancePreview inherits Rectangle {
+    height: 108px * Theme.font-scale;
+    background: Theme.window;
+    border-width: 1px; border-color: Theme.border;
+    clip: true;
+    VerticalLayout {
+        Rectangle {
+            height: 40px * Theme.font-scale;
+            background: @linear-gradient(180deg, Theme.tool-top 0%, Theme.tool-bottom 100%);
+            Sheen { strength: 0.7; }
+            HorizontalLayout {
+                padding: 4px; spacing: 4px;
+                ToolButton { pill: true; icon: "prev"; }
+                ToolButton { icon: "pause"; icon-size: 20px; width: 32px * Theme.font-scale; y: -1px; }
+                ToolButton { pill: true; icon: "next"; }
+                Icon { name: "volume"; size: 16px; y: (parent.height - self.height) / 2; }
+                HSlider { width: 70px * Theme.font-scale; value: 0.6; }
+                ToolButton { icon: "shuffle"; checked: true; }
+            }
+        }
+        for r[i] in [{ t: "Instant Crush", a: "Daft Punk" }, { t: "「シキ」パッパラダイス", a: "Кукла" }, { t: "Get Lucky", a: "Daft Punk" }]: Rectangle {
+            height: 22px * Theme.font-scale;
+            background: i == 1 ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%) : i == 2 ? Theme.alt-row : Theme.base;
+            Text { x: 8px; width: parent.width * 0.3; text: r.t; color: Theme.text; overflow: elide; vertical-alignment: center; font-size: 12px * Theme.font-scale; }
+            Text { x: 8px + parent.width * 0.32; width: parent.width * 0.2; text: r.a; color: Theme.text; overflow: elide; vertical-alignment: center; font-size: 12px * Theme.font-scale; }
+        }
+    }
+    MenuPanel {
+        x: parent.width - self.width - 8px; y: 6px;
+        panel-w: 150px * Theme.font-scale;
+        entries: [{ label: "Play", shortcut: "Enter", id: "", enabled: true, separator: false, sub: [] }, { label: "Add to queue", shortcut: "", id: "", enabled: true, separator: false, sub: [] }, { label: "Remove", shortcut: "Del", id: "", enabled: false, separator: false, sub: [] }];
+    }
+}

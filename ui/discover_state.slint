@@ -1,0 +1,28 @@
+import { ShelfData, MoodChip } from "types.slint";
+
+// State and callbacks of the Discover page. Rust reaches them with `ui.global::<Discover>()`.
+export global Discover {
+    /// Show the Discover tab content instead of the playlist table.
+    in-out property <bool> active: false;
+    /// The Discover tab exists in the tab strip once a section was opened.
+    in-out property <bool> opened: false;
+    in-out property <string> section: "home"; // home | new | charts | moods | mood
+    in property <string> title;
+    in property <bool> busy;
+    in property <bool> can-back;
+    in property <[ShelfData]> shelves;
+    in property <[MoodChip]> moods;
+    in property <[{code: string, name: string}]> countries;
+    in-out property <string> country: "ZZ";
+    callback choose-section(string);
+    callback back();
+    callback refresh();
+    callback country-picked(string);
+    callback mood-clicked(int);
+    /// shelf index, item index
+    callback card-clicked(int, int);
+    callback card-play(int, int);
+    callback card-context(string, int, int);
+    /// A card was instantiated (visible): load its thumbnail.
+    callback card-shown(int, int);
+}

@@ -1,0 +1,10 @@
+import { Theme } from "theme.slint";
+
+// A pearly highlight over the top half of a bar or tab (Aero skin; nothing in Classic).
+export component Sheen inherits Rectangle {
+    in property <float> strength: 0.5;
+    if Theme.gloss > 0: Rectangle {
+        x: 0px; y: 0px; width: parent.width; height: parent.height * 0.52;
+        background: @linear-gradient(180deg, #FFFFFF.with-alpha(Theme.gloss * root.strength * (Theme.dark ? 0.28 : 0.7)) 0%, #FFFFFF.with-alpha(Theme.gloss * root.strength * 0.05) 100%);
+    }
+}

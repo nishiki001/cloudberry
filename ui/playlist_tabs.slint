@@ -1,0 +1,85 @@
+import { ThemedMenu } from "themed_menu.slint";
+import { Theme } from "theme.slint";
+import { Icon } from "icon.slint";
+import { Sheen } from "sheen.slint";
+
+// Playlist tab strip above the table: closeable tabs and a "+" button.
+export component PlaylistTabs inherits Rectangle {
+    in property <[string]> tabs: ["Queue"];
+    in-out property <int> current: 0;
+    /// Width available to the strip (given by the window, so tabs shrink instead of overflowing).
+    in property <length> strip-w: 400px;
+    callback selected(int);
+    callback close(int);
+    callback rename(int);
+    callback move(int, int); // tab index, direction (-1 left / +1 right)
+    callback add();
+    /// The pinned Discover tab (right after Queue, not closeable).
+    in property <bool> discover-shown: false;
+    in property <bool> discover-active: false;
+    callback discover-selected();
+    height: 28px * Theme.font-scale;
+    clip: true;
+    background: Theme.window;
+    Rectangle { x: 0px; y: parent.height - 1px; height: 1px; background: Theme.border; }
+    // hand-positioned (no layout): the tabs depend on the window width, and a layout would feed
+    // their size back into the window's minimum size
+    property <length> queue-w: 84px * Theme.font-scale;
+    property <length> disc-w: 92px * Theme.font-scale;
+    property <length> disc-slot: root.discover-shown ? root.disc-w + 2px : 0px;
+    property <length> tab-w: Math.max(80px * Theme.font-scale, Math.min(190px * Theme.font-scale, (root.strip-w - 36px * Theme.font-scale - root.queue-w - root.disc-slot - 2px * root.tabs.length) / Math.max(1, root.tabs.length - 1)));
+    for name[i] in root.tabs: Rectangle {
+            x: 6px + (i > 0 ? root.queue-w + 2px + root.disc-slot + (i - 1) * (root.tab-w + 2px) : 0px);
+            width: i > 0 ? root.tab-w : root.queue-w;
+            border-top-left-radius: 3px; border-top-right-radius: 3px;
+            border-width: 1px; border-color: Theme.border;
+            background: i == root.current && !root.discover-active ? @linear-gradient(180deg, Theme.tab-active-top 0%, Theme.tab-active-bottom 100%) : @linear-gradient(180deg, Theme.tab-top 0%, Theme.tab-bottom 100%);
+            y: i == root.current && !root.discover-active ? 4px : 6px;
+            height: 25px * Theme.font-scale - self.y;
+            Sheen { strength: i == root.current && !root.discover-active ? 0.9 : 0.5; }
+            label := Text {
+                x: 12px; width: parent.width - (i > 0 ? 44px : 26px) * Theme.font-scale + 12px; overflow: elide; text: name; color: i == root.current && !root.discover-active ? Theme.text : Theme.text-dim;
+                font-weight: i == root.current && !root.discover-active ? 700 : 400; vertical-alignment: center;
+            }
+            TouchArea {
+                clicked => { root.current = i; root.selected(i); }
+                double-clicked => { if (i > 0) { root.rename(i); } }
+                pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up && i > 0) { menu.open(self.mouse-x, self.mouse-y); } }
+            }
+            menu := ThemedMenu {
+                width: parent.width; height: parent.height;
+                entries: i > 0 ? [{ label: "Rename…", id: "rename", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Move left", id: "left", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Move right", id: "right", shortcut: "", enabled: true, separator: false, sub: [] }, { label: "Close", id: "close", shortcut: "", enabled: true, separator: false, sub: [] }] : [];
+                activated(id) => {
+                    if (id == "rename") { root.rename(i); }
+                    if (id == "left") { root.move(i, -1); }
+                    if (id == "right") { root.move(i, 1); }
+                    if (id == "close") { root.close(i); }
+                }
+            }
+            if i > 0: Rectangle {
+                x: parent.width - 22px * Theme.font-scale; y: (parent.height - 16px * Theme.font-scale) / 2; width: 16px * Theme.font-scale; height: 16px * Theme.font-scale;
+                background: xa.has-hover ? Theme.btn-hover-bottom : transparent;
+                border-radius: 2px;
+                Icon { name: "close"; size: 12px; tint: Theme.text-dim; x: 2px; y: 2px; }
+                xa := TouchArea { clicked => { root.close(i); } }
+            }
+            if i == root.current && !root.discover-active: Rectangle { // merge into the table below
+                x: 1px; y: parent.height - 1px; width: parent.width - 2px; height: 2px; background: Theme.tab-active-bottom;
+            }
+        }
+    if root.discover-shown: Rectangle {
+        x: 6px + root.queue-w + 2px; y: root.discover-active ? 4px : 6px; width: root.disc-w; height: 25px * Theme.font-scale - self.y;
+        border-top-left-radius: 3px; border-top-right-radius: 3px;
+        border-width: 1px; border-color: Theme.border;
+        background: root.discover-active ? @linear-gradient(180deg, Theme.tab-active-top 0%, Theme.tab-active-bottom 100%) : @linear-gradient(180deg, Theme.tab-top 0%, Theme.tab-bottom 100%);
+        Icon { name: "discover"; size: 14px; tint: root.discover-active ? Theme.accent-text : Theme.text-dim; x: 8px; y: (parent.height - self.height) / 2; }
+        Text { x: 28px * Theme.font-scale; width: parent.width - 32px * Theme.font-scale; text: "Discover"; color: root.discover-active ? Theme.text : Theme.text-dim; font-weight: root.discover-active ? 700 : 400; vertical-alignment: center; overflow: elide; }
+        TouchArea { clicked => { root.discover-selected(); } }
+        if root.discover-active: Rectangle { x: 1px; y: parent.height - 1px; width: parent.width - 2px; height: 2px; background: Theme.tab-active-bottom; }
+    }
+    Rectangle {
+            x: 6px + root.queue-w + 2px + root.disc-slot + (root.tabs.length - 1) * (root.tab-w + 2px); width: 24px * Theme.font-scale;
+            Icon { name: "add"; size: 14px; tint: Theme.text-dim; x: 5px; y: 6px * Theme.font-scale; }
+            TouchArea { clicked => { root.add(); } }
+        }
+}

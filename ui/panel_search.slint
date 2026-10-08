@@ -1,0 +1,85 @@
+import { ScrollList } from "scroll_list.slint";
+import { Theme } from "theme.slint";
+import { TrackData } from "types.slint";
+import { SearchBox } from "searchbox.slint";
+import { PanelRow } from "panel_row.slint";
+import { Button } from "button.slint";
+
+// Search tab: field, filter chips and the result list with thumbnails.
+// Double-click = add & play (albums / artists / playlists open as a tab), Enter = append.
+export component PanelSearch inherits Rectangle {
+    in property <[TrackData]> results;
+    in property <bool> busy;
+    in property <bool> loading;
+    in property <bool> end;
+    /// Scrolled to within a few rows of the end: ask for the next page.
+    callback more();
+    in-out property <int> selected: -1;
+    in-out property <string> filter: "songs";
+    callback submit(string);
+    callback filter-changed(string);
+    callback activate(int);
+    callback context(string, int);
+    callback drag-moved(string, string, length, length);
+    callback drag-ended(string, length, length);
+    callback escaped();
+    public function focus-search() { box.focus-input(); }
+    background: Theme.base;
+    property <[{id: string, label: string}]> chips: [
+        { id: "songs", label: "Songs" },
+        { id: "albums", label: "Albums" },
+        { id: "artists", label: "Artists" },
+        { id: "playlists", label: "Lists" },
+        { id: "videos", label: "Videos" },
+    ];
+    VerticalLayout {
+        padding: 6px; spacing: 6px;
+        box := SearchBox {
+            accepted(t) => { root.submit(t); }
+            escaped => { root.escaped(); }
+        }
+        HorizontalLayout {
+            spacing: 2px;
+            for c in root.chips: Button {
+                label: c.label; height: 22px; font-size: 10px * Theme.font-scale; pad: 3px; min-w: 20px; active: root.filter == c.id;
+                clicked => { root.filter = c.id; root.filter-changed(c.id); }
+            }
+        }
+        lv := ScrollList {
+            vertical-stretch: 1;
+            row-h: 42px; count: root.results.length;
+            property <bool> near-end: root.results.length > 0 && self.content-y + root.results.length * 42px - self.height < 5 * 42px + 1px && root.results.length * 42px > self.height - 1px;
+            changed near-end => { if (self.near-end) { root.more(); } }
+            // a short page leaves the list near its end: ask again once loading is over
+            property <bool> idle: !root.loading;
+            changed idle => { if (self.idle && self.near-end) { root.more(); } }
+            for k in lv.shown: PanelRow {
+                property <int> i: lv.first + k;
+                property <TrackData> t: root.results[i];
+                visible: i < root.results.length;
+                x: 0px; y: i * 42px; width: lv.width - 12px;
+                title: t.title; subtitle: t.artist + (t.album != "" ? " · " + t.album : "") + (t.time != "" ? " · " + t.time : "");
+                kind: t.kind; thumb: t.thumb; has-thumb: t.has-thumb;
+                playing: t.playing;
+                selected: i == root.selected;
+                drag-data: t.kind == "song" || t.kind == "video" ? "results:" + i : "";
+                clicked => { root.selected = i; }
+                activated => { root.activate(i); }
+                menu-owner: "search"; menu-index: i;
+                context(a) => { root.context(a, i); }
+                drag-moved(d, ti, x, y) => { root.drag-moved(d, ti, x, y); }
+                drag-ended(d, x, y) => { root.drag-ended(d, x, y); }
+            }
+        }
+        if root.loading || root.end: Rectangle {
+            height: 24px;
+            Text { text: root.loading ? "Loading…" : "No more results"; color: Theme.text-dim; font-size: 12px * Theme.font-scale; horizontal-alignment: center; vertical-alignment: center; }
+        }
+    }
+    Text {
+        visible: root.results.length == 0;
+        text: root.busy ? "Searching…" : "Type a query and press Enter";
+        color: Theme.text-dim;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+}

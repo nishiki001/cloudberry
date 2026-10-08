@@ -1,0 +1,55 @@
+import { Theme } from "theme.slint";
+import { MenuItemData } from "types.slint";
+import { Sheen } from "sheen.slint";
+import { MenuPanel } from "menu_panel.slint";
+import { Menus } from "menus_state.slint";
+
+// Classic in-window menu bar (Music · Playlist · View · Tools · Help). Custom rather than
+// Slint's MenuBar so it looks the same on every platform and renders offscreen.
+export component MenuBar inherits Rectangle {
+    callback action(string);
+    height: 24px * Theme.font-scale;
+    background: @linear-gradient(180deg, Theme.tool-top 0%, Theme.tool-bottom 100%);
+
+    Sheen { strength: 0.8; }
+    property <[string]> titles: ["Music", "Playlist", "View", "Tools", "Help"];
+
+    property <int> open: 0;
+    property <length> popup-x: 0px;
+    property <length> popup-y: 24px * Theme.font-scale;
+
+    HorizontalLayout {
+        padding-left: 4px;
+        for t[i] in root.titles: Rectangle {
+            width: label.preferred-width + 18px;
+            background: ta.has-hover ? Theme.sel-top : transparent;
+            label := Text { text: t; color: Theme.text; vertical-alignment: center; horizontal-alignment: center; }
+            ta := TouchArea {
+                clicked => {
+                    root.open = i;
+                    root.popup-x = parent.x + 4px;
+                    root.popup-y = root.height;
+                    popup.show();
+                }
+            }
+        }
+    }
+    Rectangle { // bottom hairline
+        y: parent.height - 1px; height: 1px; background: Theme.border;
+    }
+
+    popup := PopupWindow {
+        x: root.popup-x;
+        y: root.popup-y;
+        close-policy: close-on-click-outside;
+        // The popup root must have the panel's size: with 0×0 every click counts as "outside"
+        // and closes the popup before the row sees it.
+        width: panel.width; height: panel.height;
+        panel := MenuPanel {
+            x: 0px; y: 0px;
+            entries: Menus.bar[root.open];
+            activated(id) => { popup.close(); root.action(id); }
+            closed => { popup.close(); }
+        }
+    }
+}

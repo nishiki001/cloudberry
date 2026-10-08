@@ -1,0 +1,20 @@
+# Packit: every published GitHub release rebuilds the COPR package.
+# One-time: enable Packit for the repo (https://packit.dev/docs/guide) and create the COPR project.
+specfile_path: packaging/rpm/cloudberry.spec
+upstream_package_name: cloudberry
+downstream_package_name: cloudberry
+upstream_tag_template: v{version}
+srpm_build_deps: []
+actions:
+  # the vendored crates are a release asset: fetch it next to the spec before the SRPM is built
+  post-upstream-clone:
+    - bash -c 'v=$(git describe --tags --abbrev=0); v=${v#v}; curl -fsSL -o packaging/rpm/cloudberry-vendor.tar.xz "https://github.com/nishiki001/cloudberry/releases/download/v${v}/cloudberry-vendor.tar.xz"'
+jobs:
+  - job: copr_build
+    trigger: release
+    owner: nishiki001
+    project: cloudberry
+    targets:
+      - fedora-stable-x86_64
+      - fedora-stable-aarch64
+      - fedora-rawhide-x86_64

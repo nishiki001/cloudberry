@@ -1,0 +1,94 @@
+import { Theme } from "theme.slint";
+import { Panels } from "panels_state.slint";
+import { PanelNow } from "panel_now.slint";
+import { PanelLibrary } from "panel_library.slint";
+import { PanelSearch } from "panel_search.slint";
+import { NowPlaying } from "nowplaying.slint";
+import { PanelDiscover } from "panel_discover.slint";
+
+// Content of the left pane next to the tab strip: the active panel and the now-playing widget.
+export component SidePanels inherits Rectangle {
+    in property <int> tab; // 0 Now · 1 Library · 2 Search · 3 Lists · 4 Discover
+    in property <length> avail-w;
+    in property <image> art;
+    in property <image> art-flat;
+    in property <bool> has-cover;
+    in property <bool> playing;
+    in property <string> title;
+    in property <string> artist;
+    in property <string> album;
+    callback drag-moved(string, string, length, length);
+    callback drag-ended(string, length, length);
+    /// kind = "results" | "library"
+    callback context(string, string, int);
+    callback open-artist();
+    callback open-album();
+    callback more-like-this();
+    callback now-context(string);
+    in property <bool> has-track: true;
+    callback now-clicked();
+    callback escaped();
+    public function focus-search() { search.focus-search(); }
+
+    VerticalLayout {
+        width: parent.width; height: parent.height;
+        Rectangle {
+            vertical-stretch: 1;
+            PanelNow {
+                width: parent.width; height: parent.height;
+                visible: root.tab == 0;
+                avail-w: root.avail-w;
+                art: root.art; art-flat: root.art-flat; has-cover: root.has-cover; playing: root.playing;
+                title: root.title; artist: root.artist; album: root.album;
+                lyrics: Panels.lyrics; lyrics-current: Panels.lyrics-current; lyrics-synced: Panels.lyrics-synced;
+                lyrics-status: Panels.lyrics-status; lyrics-source: Panels.lyrics-source;
+                open-artist => { root.open-artist(); }
+                open-album => { root.open-album(); }
+                more-like-this => { root.more-like-this(); }
+                context(a) => { root.now-context(a); }
+                has-track: root.has-track;
+            }
+            PanelLibrary {
+                drag-moved(d, ti, x, y) => { root.drag-moved(d, ti, x, y); }
+                drag-ended(d, x, y) => { root.drag-ended(d, x, y); }
+                width: parent.width; height: parent.height;
+                visible: root.tab == 1 || root.tab == 3;
+                tree: Panels.tree; library: Panels.library; mode: Panels.library-mode; title: Panels.library-title;
+                tree-clicked(i) => { Panels.tree-clicked(i); }
+                tree-activated(i) => { Panels.tree-activated(i); }
+                tree-context(a, i) => { Panels.tree-context(a, i); }
+                selected <=> Panels.panel-selected;
+                back => { Panels.library-back(); }
+                play-all => { Panels.play-all(); }
+                shuffle-all => { Panels.shuffle-all(); }
+                activate(i) => { Panels.panel-activate(i); }
+                context(a, i) => { root.context("library", a, i); }
+            }
+            PanelDiscover {
+                width: parent.width; height: parent.height;
+                visible: root.tab == 4;
+            }
+            search := PanelSearch {
+                drag-moved(d, ti, x, y) => { root.drag-moved(d, ti, x, y); }
+                drag-ended(d, x, y) => { root.drag-ended(d, x, y); }
+                width: parent.width; height: parent.height;
+                visible: root.tab == 2;
+                results: Panels.results; busy: Panels.busy;
+                loading: Panels.search-loading; end: Panels.search-end;
+                more => { Panels.search-more(); }
+                selected <=> Panels.panel-selected;
+                submit(q) => { Panels.submit-search(q); }
+                activate(i) => { Panels.search-activate(i); }
+                filter-changed(f) => { Panels.search-filter(f); }
+                context(a, i) => { root.context("results", a, i); }
+                escaped => { root.escaped(); }
+            }
+        }
+        NowPlaying {
+            art: root.art; art-flat: root.art-flat; has-cover: root.has-cover; playing: root.playing;
+            title: root.title; artist: root.artist; album: root.album;
+            clicked => { root.now-clicked(); }
+            open-artist => { root.open-artist(); }
+        }
+    }
+}

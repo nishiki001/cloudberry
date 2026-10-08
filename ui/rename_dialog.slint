@@ -1,0 +1,40 @@
+import { Theme } from "theme.slint";
+import { Modal } from "modal.slint";
+import { Button } from "button.slint";
+
+// Small modal to rename a playlist tab.
+export component RenameDialog inherits Modal {
+    in-out property <string> text;
+    callback accepted(string);
+    callback cancelled();
+    in property <string> heading-text: "Rename playlist";
+    in property <string> button-label: "Rename";
+    heading: root.heading-text;
+    panel-width: 380px;
+    Rectangle {
+        height: 28px;
+        border-width: 1px;
+        border-color: input.has-focus ? Theme.accent : Theme.border;
+        background: Theme.base;
+        input := TextInput {
+            x: 8px; width: parent.width - 16px;
+            text <=> root.text;
+            vertical-alignment: center;
+            color: Theme.text;
+            single-line: true;
+            selection-background-color: Theme.selection;
+            selection-foreground-color: Theme.text;
+            init => { self.focus(); self.select-all(); }
+            accepted => { root.accepted(self.text); }
+            key-pressed(e) => {
+                if (e.text == Key.Escape) { root.cancelled(); return accept; }
+                return reject;
+            }
+        }
+    }
+    HorizontalLayout {
+        spacing: 8px; alignment: end;
+        Button { label: "Cancel"; clicked => { root.cancelled(); } }
+        Button { label: root.button-label; primary: true; clicked => { root.accepted(root.text); } }
+    }
+}

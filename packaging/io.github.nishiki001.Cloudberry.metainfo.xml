@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.nishiki001.Cloudberry</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Cloudberry</name>
+  <developer id="io.github.nishiki001">
+    <name>nishiki001</name>
+  </developer>
+  <summary>Unofficial desktop client for YouTube Music</summary>
+  <description>
+    <p>Cloudberry is a fast, native desktop music player in the style of the classic players: a sidebar, a toolbar with a live spectrum analyzer, playlist tabs and a sortable table.</p>
+    <p>It is an unofficial client for YouTube Music and is not affiliated with, endorsed by or sponsored by Google.</p>
+    <ul>
+      <li>Search, your library, playlists, Discover, artist and album pages</li>
+      <li>Synced lyrics, a spectrum analyzer driven by the real audio, a mini player</li>
+      <li>Classic and glossy Aero skins, three icon sets, your own fonts and colours</li>
+      <li>Media keys and the desktop media widget (MPRIS)</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.nishiki001.Cloudberry.desktop</launchable>
+  <icon type="stock">io.github.nishiki001.Cloudberry</icon>
+  <url type="homepage">https://github.com/nishiki001/cloudberry</url>
+  <url type="bugtracker">https://github.com/nishiki001/cloudberry/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window, light theme</caption>
+      <image>https://raw.githubusercontent.com/nishiki001/cloudberry/main/docs/images/f8-classic-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Dark theme</caption>
+      <image>https://raw.githubusercontent.com/nishiki001/cloudberry/main/docs/images/f8-classic-dark.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Aero skin</caption>
+      <image>https://raw.githubusercontent.com/nishiki001/cloudberry/main/docs/images/f8-aero-light.png</image>
+    </screenshot>
+  </screenshots>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+    <category>Player</category>
+  </categories>
+  <provides>
+    <binary>cloudberry</binary>
+  </provides>
+  <content_rating type="oars-1.1">
+    <content_attribute id="social-chat">none</content_attribute>
+    <content_attribute id="social-info">none</content_attribute>
+    <content_attribute id="social-audio">none</content_attribute>
+    <content_attribute id="money-purchasing">none</content_attribute>
+  </content_rating>
+  <requires>
+    <internet>always</internet>
+    <display_length compare="ge">860</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-10-08">
+      <description>
+        <p>First public release.</p>
+      </description>
+    </release>
+  </releases>
+</component>

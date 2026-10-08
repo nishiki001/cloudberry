@@ -1,0 +1,11 @@
+export struct HsvValue { h: float, s: float, v: float, ok: bool }
+
+// Colour maths implemented (and unit-tested) in Rust: src/core/color.rs, wired in
+// src/gui/colorpicker.rs. `recent` holds the last committed colours.
+export global ColorMath {
+    pure callback hsv-to-hex(float, float, float) -> string;
+    pure callback hex-to-hsv(string) -> HsvValue;
+    pure callback to-color(string) -> color;
+    in property <[{hex: string, color: color}]> recent;
+    callback commit(string);
+}

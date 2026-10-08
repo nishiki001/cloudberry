@@ -1,0 +1,6 @@
+# winget manifest (version file). Submit the three files with `wingetcreate submit` or a PR to microsoft/winget-pkgs.
+PackageIdentifier: nishiki001.Cloudberry
+PackageVersion: 0.1.0
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

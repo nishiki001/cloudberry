@@ -1,0 +1,51 @@
+import { Theme } from "theme.slint";
+import { SongRow } from "types.slint";
+import { Icon } from "icon.slint";
+import { ContextMenu } from "context_menu.slint";
+import { Menus } from "menus_state.slint";
+
+// Compact song list in the playlist table's row style: thumbnail, title, album, plays, length.
+// Double-click plays, right-click opens the song menu.
+export component SongList inherits Rectangle {
+    in property <[SongRow]> rows;
+    callback activated(int);
+    callback context(string, int);
+    property <int> picked: ContextMenu.picked-serial;
+    changed picked => {
+        if (ContextMenu.picked-owner == "song-list") { root.context(ContextMenu.picked-id, ContextMenu.picked-index); }
+    }
+    height: root.rows.length * 30px;
+    for r[i] in root.rows: Rectangle {
+        y: i * 30px; height: 30px; width: parent.width;
+        background: ta.has-hover ? Theme.base.mix(Theme.selection, 0.5) : Math.mod(i, 2) == 1 ? Theme.alt-row : Theme.base;
+        property <length> w-album: Math.max(0px, (parent.width - 48px) * 0.28);
+        property <length> w-plays: 96px;
+        property <length> w-time: 56px;
+        Rectangle {
+            x: 8px; y: 3px; width: 24px; height: 24px; border-radius: 3px; clip: true; background: Theme.analyzer-bg;
+            if r.has-thumb: Image { source: r.thumb; width: parent.width; height: parent.height; image-fit: cover; }
+            if !r.has-thumb: Icon { name: "music"; size: 14px; tint: Theme.text-dim; x: 5px; y: 5px; }
+        }
+        if r.playing: Icon { name: "play"; size: 12px; tint: Theme.accent-text; x: 36px; y: 9px; }
+        Text {
+            x: 52px; width: parent.width - 52px - parent.w-album - parent.w-plays - parent.w-time - 12px;
+            text: r.title; color: Theme.text; font-weight: r.playing ? 700 : 400; overflow: elide; vertical-alignment: center; height: parent.height;
+        }
+        Text {
+            x: parent.width - parent.w-album - parent.w-plays - parent.w-time - 6px; width: parent.w-album - 6px;
+            text: r.album; color: Theme.text-dim; overflow: elide; vertical-alignment: center; height: parent.height;
+        }
+        Text {
+            x: parent.width - parent.w-plays - parent.w-time - 6px; width: parent.w-plays - 6px;
+            text: r.plays; color: Theme.text-dim; horizontal-alignment: right; overflow: elide; vertical-alignment: center; height: parent.height;
+        }
+        Text {
+            x: parent.width - parent.w-time - 6px; width: parent.w-time - 6px;
+            text: r.time; color: Theme.text-dim; horizontal-alignment: right; overflow: elide; vertical-alignment: center; height: parent.height;
+        }
+        ta := TouchArea {
+            double-clicked => { root.activated(i); }
+            pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.up) { ContextMenu.show("song-list", i, Menus.track-items(true, false, []), self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } }
+        }
+    }
+}

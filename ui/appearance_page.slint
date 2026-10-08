@@ -1,0 +1,76 @@
+import { Theme, Appearance } from "theme.slint";
+import { Dialogs } from "dialogs_state.slint";
+import { Icons } from "icon.slint";
+import { Button } from "button.slint";
+import { ColorField } from "widgets/color_field.slint";
+import { Row, Choice } from "form.slint";
+import { AppearancePreview } from "appearance_preview.slint";
+
+// Settings → Appearance: theme mode, colours (system / custom with presets), cover, motion.
+export component AppearancePage inherits VerticalLayout {
+    in property <int> theme-mode;
+    in property <bool> reduce-motion;
+    in property <bool> spinning-disc;
+    in property <string> disc-speed;
+    callback set-theme(int);
+    callback set-reduce-motion(bool);
+    spacing: 10px;
+    AppearancePreview { }
+    Row {
+        name: "Theme";
+        for n[i] in ["System", "Light", "Dark"]: Button { label: n; active: root.theme-mode == i; clicked => { root.set-theme(i); } }
+    }
+    Row {
+        name: "Skin";
+        for n[i] in [{ id: "classic", label: "Classic" }, { id: "aero", label: "Aero" }]: Button { label: n.label; active: Theme.skin == n.id; clicked => { Dialogs.set-skin(n.id); } }
+    }
+    Row {
+        name: "Icons";
+        for n[i] in [{ id: "line", label: "Line" }, { id: "aero", label: "Aero" }, { id: "pixel", label: "Pixel" }]: Button { label: n.label; active: Icons.set == n.id; clicked => { Dialogs.set-icon-set(n.id); } }
+    }
+    Row {
+        name: "Colors";
+        for n[i] in ["System", "Custom"]: Button {
+            label: n; active: Appearance.custom == (i == 1);
+            clicked => { Appearance.custom = i == 1; Appearance.changed(); }
+        }
+    }
+    if Appearance.custom: Row {
+        name: "Presets";
+        for p in Appearance.presets: Rectangle {
+            width: 26px; height: 26px; border-radius: 13px; background: p.color;
+            border-width: Appearance.accent.to-lowercase() == p.hex.to-lowercase() ? 3px : 1px;
+            border-color: Appearance.accent.to-lowercase() == p.hex.to-lowercase() ? Theme.text : Theme.border;
+            TouchArea { clicked => { Appearance.accent = p.hex; Appearance.changed(); } mouse-cursor: pointer; }
+        }
+    }
+    if Appearance.custom: Row {
+        name: "Accent";
+        ColorField { value <=> Appearance.accent; fallback: Theme.accent; edited => { Appearance.changed(); } }
+    }
+    if Appearance.custom: Row {
+        name: "Window";
+        ColorField { value <=> Appearance.window-color; fallback: Theme.window; edited => { Appearance.changed(); } }
+    }
+    if Appearance.custom: Row {
+        name: "Text";
+        ColorField { value <=> Appearance.text-color; fallback: Theme.text; edited => { Appearance.changed(); } }
+    }
+    if root.spinning-disc: Choice {
+        name: "Disc speed";
+        labels: ["Slow", "Normal", "Fast"];
+        ids: ["slow", "normal", "fast"];
+        current: root.disc-speed;
+        picked(id) => { Dialogs.set-disc-speed(id); }
+    }
+    Row {
+        name: "Cover";
+        Button { label: root.spinning-disc ? "Spinning disc" : "Flat"; active: root.spinning-disc; clicked => { Dialogs.set-spinning-disc(!root.spinning-disc); } }
+        Text { text: "spinning needs a restart"; color: Theme.text-dim; font-size: 12px * Theme.font-scale; vertical-alignment: center; }
+    }
+    Row {
+        name: "Motion";
+        Button { label: root.reduce-motion ? "Reduced" : "Full"; active: root.reduce-motion; clicked => { root.set-reduce-motion(!root.reduce-motion); } }
+        Text { text: "no spinning / sliding when reduced"; color: Theme.text-dim; font-size: 12px * Theme.font-scale; vertical-alignment: center; }
+    }
+}

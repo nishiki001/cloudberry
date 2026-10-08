@@ -1,0 +1,27 @@
+import { Theme } from "theme.slint";
+import { Dialogs } from "dialogs_state.slint";
+
+// Track count + total length · stream format · sign-in state · transient message.
+export component StatusBar inherits Rectangle {
+    in property <string> summary;
+    in property <string> format;
+    in property <string> account;
+    in property <string> message;
+    height: 22px * Theme.font-scale;
+    background: @linear-gradient(180deg, Theme.tool-top 0%, Theme.tool-bottom 100%);
+    Rectangle { x: 0px; y: 0px; height: 1px; background: Theme.border; }
+    HorizontalLayout {
+        padding-left: 10px; padding-right: 10px; spacing: 14px;
+        Text { text: root.summary; color: Theme.text-dim; vertical-alignment: center; font-size: 12px * Theme.font-scale; }
+        Text { text: root.message; color: Theme.text; vertical-alignment: center; font-size: 12px * Theme.font-scale; horizontal-stretch: 1; overflow: elide; min-width: 0px; }
+        if Dialogs.status-action != "": Rectangle {
+            width: act.preferred-width + 16px;
+            border-radius: 3px;
+            background: at.has-hover ? Theme.accent.with-alpha(0.25) : Theme.accent.with-alpha(0.12);
+            act := Text { text: Dialogs.status-action; color: Theme.accent-text; font-size: 12px * Theme.font-scale; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+            at := TouchArea { mouse-cursor: pointer; clicked => { Dialogs.status-action-clicked(); } }
+        }
+        Text { text: root.format; color: Theme.text-dim; vertical-alignment: center; font-size: 12px * Theme.font-scale; }
+        Text { text: root.account; color: Theme.text-dim; vertical-alignment: center; font-size: 12px * Theme.font-scale; }
+    }
+}

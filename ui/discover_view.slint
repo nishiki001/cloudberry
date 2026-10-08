@@ -1,0 +1,77 @@
+import { Theme } from "theme.slint";
+import { Discover } from "discover_state.slint";
+import { Button } from "button.slint";
+import { Icon } from "icon.slint";
+import { DiscoverShelf } from "discover_shelf.slint";
+
+// The Discover tab's content: header (title, back, refresh, country chips for charts), then
+// shelves stacked vertically, or the moods & genres grid of colour chips.
+export component DiscoverView inherits Rectangle {
+    background: Theme.base;
+    border-width: 1px; border-color: Theme.border;
+    clip: true;
+
+    Rectangle { // header
+        x: 0px; y: 0px; width: parent.width; height: 40px;
+        background: @linear-gradient(180deg, Theme.header-top 0%, Theme.header-bottom 100%);
+        Rectangle { x: 0px; y: parent.height - 1px; height: 1px; background: Theme.border; }
+        HorizontalLayout {
+            padding-left: 8px; padding-right: 8px; spacing: 8px;
+            if Discover.can-back: Button { y: 7px; height: 26px; width: 80px; horizontal-stretch: 0; label: "Back"; icon: "back"; clicked => { Discover.back(); } }
+            Text { text: Discover.title + (Discover.busy ? "  …" : ""); color: Theme.text; font-size: 16px * Theme.font-scale; font-weight: 700; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+            Button { y: 7px; height: 26px; width: 100px; horizontal-stretch: 0; label: "Refresh"; icon: "refresh"; clicked => { Discover.refresh(); } }
+        }
+    }
+    if Discover.section == "charts": Rectangle { // country chips
+        x: 0px; y: 40px; width: parent.width; height: 34px;
+        Flickable {
+            content-width: chips.preferred-width + 16px;
+            chips := HorizontalLayout {
+                x: 8px; y: 5px; spacing: 4px;
+                for c in Discover.countries: Button {
+                    height: 24px; font-size: 12px * Theme.font-scale; pad: 8px; min-w: 20px; label: c.name;
+                    active: Discover.country == c.code;
+                    clicked => { Discover.country-picked(c.code); }
+                }
+            }
+        }
+    }
+    property <length> top: Discover.section == "charts" ? 74px : 40px;
+    flick := Flickable {
+        x: 0px; y: root.top; width: parent.width; height: parent.height - root.top;
+        content-height: col.preferred-height + 16px;
+        col := VerticalLayout {
+            width: flick.width; y: 4px; spacing: 6px; alignment: start;
+            for shelf[si] in Discover.shelves: DiscoverShelf {
+                visible: Discover.section != "moods";
+                height: Discover.section != "moods" ? (shelf.songs ? 226px : 240px) : 0px;
+                shelf: shelf; owner: "discover:" + si;
+                on-screen: self.y + self.height + 240px > -flick.content-y && self.y < -flick.content-y + flick.height + 240px;
+                clicked(i) => { Discover.card-clicked(si, i); }
+                play(i) => { Discover.card-play(si, i); }
+                context(a, i) => { Discover.card-context(a, si, i); }
+                shown(i) => { Discover.card-shown(si, i); }
+            }
+            Rectangle {
+                height: Discover.section == "moods" ? 28px + Math.max(40px, Math.ceil(Discover.moods.length / Math.max(1, Math.floor((flick.width - 24px) / 176px))) * 52px) : 0px;
+                if Discover.section == "moods": Text { x: 12px; y: 4px; text: "Pick a mood or genre"; color: Theme.text-dim; font-size: 13px * Theme.font-scale; }
+                for m[i] in Discover.moods: Rectangle {
+                    property <int> per-row: Math.max(1, Math.floor((flick.width - 24px) / 176px));
+                    x: 12px + Math.mod(i, per-row) * 176px;
+                    y: 28px + Math.floor(i / per-row) * 52px;
+                    width: 168px; height: 44px; border-radius: 6px;
+                    background: @linear-gradient(135deg,
+                        hsv(Theme.accent.to-hsv().hue + Math.mod(i * 23, 140) - 70, Math.max(0.35, Theme.accent.to-hsv().saturation * 0.8), Theme.dark ? 0.55 : 0.95).mix(Theme.base, Theme.dark ? 0.12 : 0.2) 0%,
+                        hsv(Theme.accent.to-hsv().hue + Math.mod(i * 23, 140) - 40, Math.max(0.35, Theme.accent.to-hsv().saturation * 0.8), Theme.dark ? 0.4 : 0.85).mix(Theme.base, Theme.dark ? 0.25 : 0.3) 100%);
+                    border-width: 1px; border-color: Theme.border;
+                    Text { x: 12px; width: parent.width - 24px; height: parent.height; text: m.title; color: Theme.text; font-weight: 700; overflow: elide; vertical-alignment: center; }
+                    mta := TouchArea { mouse-cursor: pointer; clicked => { Discover.mood-clicked(i); } }
+                    if mta.has-hover: Rectangle { border-radius: 6px; border-width: 2px; border-color: Theme.accent; }
+                }
+            }
+        }
+    }
+    if Discover.shelves.length == 0 && Discover.moods.length == 0 && !Discover.busy: Text {
+        x: 20px; y: root.top + 20px; text: "Nothing to show here yet."; color: Theme.text-dim;
+    }
+}

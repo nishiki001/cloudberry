@@ -1,0 +1,14 @@
+PackageIdentifier: nishiki001.Cloudberry
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: nishiki001
+PackageName: Cloudberry
+PackageUrl: https://github.com/nishiki001/cloudberry
+License: GPL-3.0-or-later
+ShortDescription: Unofficial desktop client for YouTube Music (not affiliated with Google)
+Tags:
+  - music
+  - youtube-music
+  - player
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

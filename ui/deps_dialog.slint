@@ -1,0 +1,37 @@
+import { Theme } from "theme.slint";
+import { Button } from "button.slint";
+
+// Shown instead of the main window when mpv / yt-dlp / deno are missing.
+export component DepsDialog inherits Window {
+    title: "Cloudberry — missing tools";
+    preferred-width: 640px;
+    preferred-height: 360px;
+    min-width: 420px;
+    background: Theme.window;
+    in property <string> message;
+    in property <bool> busy;
+    /// A download can be retried (first-run helpers); false for the plain "install these" dialog.
+    in property <bool> can-retry: false;
+    callback quit();
+    callback retry();
+    VerticalLayout {
+        padding: 20px; spacing: 12px;
+        Text { text: "Cloudberry needs a few tools first"; color: Theme.text; font-size: 20px * Theme.font-scale; font-weight: 700; }
+        Text { text: root.busy ? "Cloudberry downloads the official yt-dlp and deno once (about 50 MB) into its data folder." : root.can-retry ? "Retry the download, or install the missing ones with the commands below (select the text, Ctrl+C), then start Cloudberry again." : "Install the missing ones with the commands below (select the text, Ctrl+C), then start Cloudberry again."; color: Theme.text-dim; wrap: word-wrap; }
+        Rectangle {
+            vertical-stretch: 1;
+            background: Theme.analyzer-bg; border-radius: 8px; border-width: 1px; border-color: Theme.border;
+            input := TextInput {
+                x: 12px; y: 10px; width: parent.width - 24px; height: parent.height - 20px;
+                text: root.message; read-only: true; wrap: word-wrap;
+                color: Theme.text; font-size: 13px * Theme.font-scale; font-family: "monospace";
+            }
+        }
+        HorizontalLayout {
+            spacing: 8px; alignment: end;
+            if root.can-retry && !root.busy: Button { label: "Retry"; clicked => { root.retry(); } }
+            Button { label: "Select all";  clicked => { input.focus(); input.select-all(); } }
+            Button { label: "Quit";  primary: true; clicked => { root.quit(); } }
+        }
+    }
+}

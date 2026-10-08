@@ -1,0 +1,131 @@
+import { Theme } from "theme.slint";
+import { MenuItemData } from "types.slint";
+
+// The panel of a themed menu: rows with hover, separators, right-aligned shortcut hints,
+// disabled entries, one level of submenu, keyboard navigation (arrows, Enter, Esc). It is the
+// content of the popup windows opened by `ThemedMenu` and the menu bar.
+export component MenuPanel inherits Rectangle {
+    in property <[MenuItemData]> entries;
+    property <length> row-h: 24px * Theme.font-scale;
+    in property <length> panel-w: 230px * Theme.font-scale;
+    callback activated(string);
+    callback closed();
+    property <int> hot: -1;
+    property <int> sub-open: -1;
+    property <int> sub-hot: -1;
+    property <int> n: root.entries.length;
+    property <length> sub-w: 210px * Theme.font-scale;
+    width: root.panel-w + (root.sub-open >= 0 ? root.sub-w + 2px : 0px);
+    property <length> main-h: col.preferred-height;
+    property <length> sub-h: Math.min(root.sub-open >= 0 ? root.entries[root.sub-open].sub.length * root.row-h + 6px : 0px, root.row-h * 10.5);
+    property <length> sub-y: Math.max(0px, Math.min(root.sub-open * root.row-h, root.main-h - root.sub-h));
+    height: Math.max(root.main-h, root.sub-h);
+
+    function ok(i: int) -> bool { return i >= 0 && i < root.n && !root.entries[i].separator && root.entries[i].enabled; }
+    function step(from: int, dir: int) -> int {
+        return root.ok(from + dir) ? from + dir : root.ok(from + 2 * dir) ? from + 2 * dir : root.ok(from + 3 * dir) ? from + 3 * dir : from;
+    }
+    function sub-ok(i: int) -> bool { return root.sub-open >= 0 && i >= 0 && i < root.entries[root.sub-open].sub.length && root.entries[root.sub-open].sub[i].enabled; }
+    function activate-hot() {
+        if (root.sub-hot >= 0 && root.sub-ok(root.sub-hot)) { root.activated(root.entries[root.sub-open].sub[root.sub-hot].id); }
+        else if (root.hot >= 0 && root.ok(root.hot)) {
+            if (root.entries[root.hot].sub.length > 0) { root.sub-open = root.hot; root.sub-hot = 0; }
+            else { root.activated(root.entries[root.hot].id); }
+        }
+    }
+    init => { fs.focus(); }
+
+    fs := FocusScope {
+        key-pressed(e) => {
+            if (e.text == Key.Escape) { root.closed(); return accept; }
+            if (e.text == Key.DownArrow) {
+                if (root.sub-hot >= 0) { root.sub-hot = root.sub-ok(root.sub-hot + 1) ? root.sub-hot + 1 : root.sub-hot; }
+                else { root.hot = root.hot < 0 ? root.step(-1, 1) : root.step(root.hot, 1); }
+                return accept;
+            }
+            if (e.text == Key.UpArrow) {
+                if (root.sub-hot >= 0) { root.sub-hot = root.sub-ok(root.sub-hot - 1) ? root.sub-hot - 1 : root.sub-hot; }
+                else { root.hot = root.hot < 0 ? root.step(root.n, -1) : root.step(root.hot, -1); }
+                return accept;
+            }
+            if (e.text == Key.RightArrow) {
+                if (root.hot >= 0 && root.entries[root.hot].sub.length > 0) { root.sub-open = root.hot; root.sub-hot = 0; }
+                return accept;
+            }
+            if (e.text == Key.LeftArrow) { root.sub-open = -1; root.sub-hot = -1; return accept; }
+            if (e.text == Key.Return || e.text == " ") { root.activate-hot(); return accept; }
+            return reject;
+        }
+    }
+
+    main := Rectangle {
+        x: 0px; y: 0px; width: root.panel-w; height: parent.height;
+        background: Theme.base;
+        border-width: 1px; border-color: Theme.border;
+        border-radius: Theme.radius;
+        drop-shadow-color: Theme.shadow; drop-shadow-blur: 10px; drop-shadow-offset-y: 3px;
+        col := VerticalLayout {
+            padding: 3px;
+            for e[i] in root.entries: Rectangle {
+                height: e.separator ? 7px : root.row-h;
+                background: !e.separator && (i == root.hot || (root.sub-open == i)) ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%) : transparent;
+                border-radius: 2px;
+                if e.separator: Rectangle { x: 6px; y: 3px; width: parent.width - 12px; height: 1px; background: Theme.border; }
+                if !e.separator: HorizontalLayout {
+                    padding-left: 12px; padding-right: 10px; spacing: 8px;
+                    opacity: e.enabled ? 1.0 : 0.45;
+                    Text { text: e.label; color: Theme.text; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
+                    Text { text: e.shortcut; color: Theme.text-dim; vertical-alignment: center; font-size: 11px * Theme.font-scale; }
+                    if e.sub.length > 0: Text { text: "›"; color: Theme.text-dim; vertical-alignment: center; font-size: 14px * Theme.font-scale; }
+                }
+                ta := TouchArea {
+                    enabled: !e.separator && e.enabled;
+                    accessible-role: list-item;
+                    accessible-label: e.label;
+                    accessible-item-selectable: true;
+                    accessible-item-selected: i == root.hot;
+                    changed has-hover => { if (self.has-hover) { root.hot = i; root.sub-open = e.sub.length > 0 ? i : -1; root.sub-hot = -1; } }
+                    clicked => { if (e.sub.length == 0) { root.activated(e.id); } else { root.sub-open = i; } }
+                }
+            }
+        }
+    }
+    if root.sub-open >= 0: Rectangle {
+        x: root.panel-w + 2px; y: root.sub-y;
+        width: root.sub-w; height: root.sub-h;
+        background: Theme.base;
+        border-width: 1px; border-color: Theme.border; border-radius: Theme.radius;
+        drop-shadow-color: Theme.shadow; drop-shadow-blur: 10px; drop-shadow-offset-y: 3px;
+        clip: true;
+        // keeps the keyboard-selected row in view (rows are 24 px)
+        property <int> hot-mirror: root.sub-hot;
+        changed hot-mirror => {
+            if (self.hot-mirror * root.row-h < -subf.content-y) { subf.content-y = -self.hot-mirror * root.row-h; }
+            if ((self.hot-mirror + 1) * root.row-h + 3px > -subf.content-y + subf.height) { subf.content-y = -((self.hot-mirror + 1) * root.row-h + 3px - subf.height); }
+        }
+        subf := Flickable {
+            x: 0px; y: 0px; width: parent.width; height: parent.height;
+            content-width: self.width;
+            content-height: sub-col.preferred-height;
+            sub-col := VerticalLayout {
+                width: parent.width;
+                padding: 3px;
+                for s[j] in root.entries[root.sub-open].sub: Rectangle {
+                    height: root.row-h;
+                    background: j == root.sub-hot ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%) : transparent;
+                    border-radius: 2px;
+                    Text { x: 12px; width: parent.width - 22px; text: s.label; color: Theme.text; vertical-alignment: center; overflow: elide; opacity: s.enabled ? 1.0 : 0.45; }
+                    sta := TouchArea {
+                        enabled: s.enabled;
+                        accessible-role: list-item;
+                        accessible-label: s.label;
+                        accessible-item-selectable: true;
+                        accessible-item-selected: j == root.sub-hot;
+                        changed has-hover => { if (self.has-hover) { root.sub-hot = j; } }
+                        clicked => { root.activated(s.id); }
+                    }
+                }
+            }
+        }
+    }
+}

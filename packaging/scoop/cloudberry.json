@@ -1,0 +1,22 @@
+{
+  "version": "0.1.0",
+  "description": "Unofficial desktop client for YouTube Music (not affiliated with Google)",
+  "homepage": "https://github.com/nishiki001/cloudberry",
+  "license": "GPL-3.0-or-later",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/nishiki001/cloudberry/releases/download/v0.1.0/Cloudberry-windows-x86_64.zip",
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "bin": "cloudberry.exe",
+  "shortcuts": [["cloudberry.exe", "Cloudberry"]],
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/nishiki001/cloudberry/releases/download/v$version/Cloudberry-windows-x86_64.zip"
+      }
+    }
+  }
+}

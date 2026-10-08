@@ -1,0 +1,26 @@
+import { Theme } from "theme.slint";
+import { Discover } from "discover_state.slint";
+import { Icon } from "icon.slint";
+
+// Sidebar panel of the Discover tab: the sections. Choosing one opens the Discover tab in the
+// main tab strip.
+export component PanelDiscover inherits Rectangle {
+    background: Theme.base;
+    property <[{id: string, label: string, hint: string, icon: string}]> sections: [
+        { id: "home", label: "Home", hint: "Quick picks, mixes, recommendations", icon: "now" },
+        { id: "new", label: "New releases", hint: "Fresh albums and singles", icon: "add" },
+        { id: "charts", label: "Charts", hint: "Top songs and artists by country", icon: "sort-up" },
+        { id: "moods", label: "Moods & genres", hint: "Browse playlists by mood", icon: "lists" },
+    ];
+    VerticalLayout {
+        alignment: start;
+        for s in root.sections: Rectangle {
+            height: 52px;
+            background: Discover.active && (Discover.section == s.id || (s.id == "moods" && Discover.section == "mood")) ? @linear-gradient(180deg, Theme.sel-top 0%, Theme.sel-bottom 100%) : ta.has-hover ? Theme.selection.with-alpha(0.5) : transparent;
+            Icon { name: s.icon; size: 20px; tint: Theme.accent-text; x: 12px; y: (parent.height - self.height) / 2; }
+            Text { x: 44px; y: 8px; width: parent.width - 52px; height: 18px; text: s.label; color: Theme.text; font-weight: 700; overflow: elide; }
+            Text { x: 44px; y: 27px; width: parent.width - 52px; height: 16px; text: s.hint; color: Theme.text-dim; font-size: 12px * Theme.font-scale; overflow: elide; }
+            ta := TouchArea { mouse-cursor: pointer; clicked => { Discover.choose-section(s.id); } }
+        }
+    }
+}
